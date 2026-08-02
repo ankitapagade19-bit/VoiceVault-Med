@@ -1,0 +1,238 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  ADMIN
+  STAFF
+  DOCTOR
+  PATIENT
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum CorrectionStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum AppointmentStatus {
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+model User {
+  id                  String             @id @default(cuid())
+  name                String
+  email               String             @unique
+  passwordHash        String
+  role                Role
+  status              UserStatus         @default(ACTIVE)
+  mustChangePassword  Boolean            @default(false)
+  passwordChangedAt   DateTime?
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+
+  doctorProfile       DoctorProfile?
+  patientProfile      PatientProfile?
+  createdVersions     MedicalRecordVersion[] @relation("CreatedVersions")
+  requestedCorrections CorrectionRequest[]   @relation("RequestedCorrections")
+  reviewedCorrections CorrectionRequest[]   @relation("ReviewedCorrections")
+  auditLogs           AuditLog[]
+  notifications       Notification[]
+}
+
+model DoctorProfile {
+  id                  String             @id @default(cuid())
+  userId              String             @unique
+  user                User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  doctorCode          String             @unique
+  specialization      String
+  publicSigningKey    String?
+
+  assignedPatients    DoctorPatientAssignment[]
+  originatingRecords  MedicalRecord[]    @relation("DoctorOriginatingRecords")
+  voiceConsultations  VoiceConsultation[]
+  emergencyAccesses   EmergencyAccess[]
+  appointments        Appointment[]
+}
+
+model PatientProfile {
+  id                  String             @id @default(cuid())
+  userId              String             @unique
+  user                User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  patientCode         String             @unique
+  dateOfBirth         String?
+  phone               String?
+  bloodType           String?
+  emergencyContact    String?
+
+  assignedDoctors     DoctorPatientAssignment[]
+  medicalRecords      MedicalRecord[]
+  correctionRequests  CorrectionRequest[]
+  voiceConsultations  VoiceConsultation[]
+  emergencyAccesses   EmergencyAccess[]
+  appointments        Appointment[]
+}
+
+model DoctorPatientAssignment {
+  id                  String             @id @default(cuid())
+  doctorId            String
+  doctor              DoctorProfile      @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  patientId           String
+  patient             PatientProfile     @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  active              Boolean            @default(true)
+  createdAt           DateTime           @default(now())
+
+  @@unique([doctorId, patientId])
+}
+
+model MedicalRecord {
+  id                  String             @id @default(cuid())
+  patientId           String
+  patient             PatientProfile     @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  originatingDoctorId String
+  originatingDoctor   DoctorProfile      @relation("DoctorOriginatingRecords", fields: [originatingDoctorId], references: [id], onDelete: Cascade)
+  createdAt           DateTime           @default(now())
+
+  versions            MedicalRecordVersion[]
+  voiceConsultations  VoiceConsultation[]
+  correctionRequests  CorrectionRequest[]
+}
+
+model MedicalRecordVersion {
+  id                  String             @id @default(cuid())
+  recordId            String
+  record              MedicalRecord      @relation(fields: [recordId], references: [id], onDelete: Cascade)
+  versionNumber       Int
+  symptoms            String
+  diagnosis           String
+  prescription        String
+  notes               String
+  previousHash        String?
+  currentHash         String
+  previousVersionId   String?
+  doctorSignature     String?
+  signingPublicKey    String?
+  createdById         String
+  createdBy           User               @relation("CreatedVersions", fields: [createdById], references: [id])
+  correctionRequestId String?
+  correctionRequest   CorrectionRequest? @relation(fields: [correctionRequestId], references: [id])
+  versionReason       String             @default("INITIAL_RECORD")
+  createdAt           DateTime           @default(now())
+
+  @@unique([recordId, versionNumber])
+}
+
+model VoiceConsultation {
+  id                  String             @id @default(cuid())
+  recordId            String
+  record              MedicalRecord      @relation(fields: [recordId], references: [id], onDelete: Cascade)
+  patientId           String
+  patient             PatientProfile     @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  doctorId            String
+  doctor              DoctorProfile      @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  ipfsCid             String
+  fileName            String
+  mimeType            String
+  fileSize            Int
+  duration            Int?
+  fileHash            String
+  createdAt           DateTime           @default(now())
+}
+
+model CorrectionRequest {
+  id                  String             @id @default(cuid())
+  recordId            String
+  record              MedicalRecord      @relation(fields: [recordId], references: [id], onDelete: Cascade)
+  patientId           String
+  patient             PatientProfile     @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  requestedById       String
+  requestedBy         User               @relation("RequestedCorrections", fields: [requestedById], references: [id])
+  reason              String
+  requestedCorrection String
+  status              CorrectionStatus   @default(PENDING)
+  reviewedById        String?
+  reviewedBy          User?              @relation("ReviewedCorrections", fields: [reviewedById], references: [id])
+  reviewNotes         String?
+  reviewedAt          DateTime?
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+
+  recordVersions      MedicalRecordVersion[]
+}
+
+model AuditLog {
+  id                  String             @id @default(cuid())
+  userId              String?
+  user                User?              @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action              String
+  resourceType        String
+  resourceId          String?
+  patientId           String?
+  success             Boolean            @default(true)
+  metadata            String?
+  ipAddress           String?
+  previousHash        String?
+  currentHash         String?
+  createdAt           DateTime           @default(now())
+}
+
+model Notification {
+  id                  String             @id @default(cuid())
+  userId              String
+  user                User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type                String
+  title               String
+  message             String
+  resourceType        String?
+  resourceId          String?
+  read                Boolean            @default(false)
+  createdAt           DateTime           @default(now())
+
+  @@index([userId, read])
+}
+
+model EmergencyAccess {
+  id                  String             @id @default(cuid())
+  doctorId            String
+  doctor              DoctorProfile      @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  patientId           String
+  patient             PatientProfile     @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  reason              String
+  confirmedAt         DateTime           @default(now())
+  expiresAt           DateTime
+  createdAt           DateTime           @default(now())
+
+  @@index([doctorId, patientId])
+}
+
+model Appointment {
+  id                  String             @id @default(cuid())
+  patientId           String
+  patient             PatientProfile     @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  doctorId            String
+  doctor              DoctorProfile      @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  date                DateTime
+  timeSlot            String
+  reason              String
+  status              AppointmentStatus  @default(SCHEDULED)
+  notes               String?
+  queueNumber         Int?
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+
+  @@index([patientId])
+  @@index([doctorId])
+}
