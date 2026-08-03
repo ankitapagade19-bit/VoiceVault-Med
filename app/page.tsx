@@ -15,8 +15,9 @@ export default function LandingPage() {
           <span>Cryptographically Verified Health Records & Governance</span>
         </div>
 
-        <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight text-slate-900 leading-[1.15]">
-          VoiceVault <span className="text-blue-600">Med</span>
+        <h1 className="text-4xl sm:text-5xl md:text-6xl font-black tracking-tight leading-tight">
+          <span className="text-sky-800">VoiceVault</span>{' '}
+          <span className="text-blue-600">Med</span>
         </h1>
 
         <p className="text-lg sm:text-xl font-medium text-slate-700 max-w-3xl mx-auto">
