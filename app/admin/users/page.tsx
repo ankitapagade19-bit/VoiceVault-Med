@@ -1,177 +1,164 @@
-export default function UsersPage() {
-  const users = [
-    {
-      id: 1,
-      name: "Dr. Sarah Lin",
-      email: "sarah.lin@voicevault.com",
-      role: "Doctor",
-      department: "Cardiology",
-      status: "Active",
-      lastActive: "2026-08-04",
-      patients: 24,
-    },
-    {
-      id: 2,
-      name: "Michael Torres",
-      email: "michael.torres@voicevault.com",
-      role: "Staff",
-      department: "Administration",
-      status: "Active",
-      lastActive: "2026-08-03",
-      patients: 0,
-    },
-    {
-      id: 3,
-      name: "Priya Sharma",
-      email: "priya.sharma@voicevault.com",
-      role: "Patient",
-      department: "-",
-      status: "Inactive",
-      lastActive: "2026-07-28",
-      patients: 0,
-    },
-    {
-      id: 4,
-      name: "Dr. Omar Hassan",
-      email: "omar.hassan@voicevault.com",
-      role: "Doctor",
-      department: "Neurology",
-      status: "Active",
-      lastActive: "2026-08-04",
-      patients: 18,
-    },
-    {
-      id: 5,
-      name: "Emily Chen",
-      email: "emily.chen@voicevault.com",
-      role: "Staff",
-      department: "Emergency",
-      status: "Active",
-      lastActive: "2026-08-02",
-      patients: 0,
-    },
-    {
-      id: 6,
-      name: "Robert Johnson",
-      email: "robert.johnson@voicevault.com",
-      role: "Patient",
-      department: "-",
-      status: "Active",
-      lastActive: "2026-08-01",
-      patients: 0,
-    },
-  ];
+'use client';
 
-  const total = users.length;
-  const active = users.filter((u) => u.status === "Active").length;
-  const doctors = users.filter((u) => u.role === "Doctor").length;
-  const staff = users.filter((u) => u.role === "Staff").length;
-  const patients = users.filter((u) => u.role === "Patient").length;
+import React, { useEffect, useState } from 'react';
+import { Sidebar } from '@/components/layout/Sidebar';
+import { Badge } from '@/components/ui/Badge';
+import { SkeletonLoader } from '@/components/ui/SkeletonLoader';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { Users, UserCheck, Plus } from 'lucide-react';
+import { formatDate } from '@/lib/utils';
+
+export default function UsersPage() {
+  const [users, setUsers] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch('/api/users');
+      if (response.ok) {
+        const data = await response.json();
+        setUsers(data.users || []);
+      }
+    } catch (err) {
+      console.error('Error fetching users:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const active = users.filter((u) => u.status === 'ACTIVE').length;
+  const doctors = users.filter((u) => u.role === 'DOCTOR').length;
+  const staff = users.filter((u) => u.role === 'STAFF').length;
+  const patients = users.filter((u) => u.role === 'PATIENT').length;
 
   return (
-    <main className="min-h-screen bg-gray-50 p-8">
-      <div className="flex justify-between items-center mb-8">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-800">
-            User Management
-          </h1>
-          <p className="text-gray-600 mt-2">
-            Manage doctors, staff, patients and administrators.
-          </p>
+    <div className="flex min-h-screen bg-slate-50">
+      <Sidebar role="ADMIN" />
+
+      <main className="flex-1 p-6 lg:p-8 space-y-6 max-w-7xl">
+        {/* Header Section */}
+        <div className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 pb-4">
+          <div>
+            <div className="flex items-center gap-3 mb-2">
+              <div className="w-8 h-8 rounded-lg bg-blue-50 border border-blue-200 flex items-center justify-center">
+                <Users className="w-5 h-5 text-blue-600" />
+              </div>
+              <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+                User Management
+              </h1>
+            </div>
+            <p className="text-xs text-slate-600 ml-11">
+              Manage doctors, staff, patients, and administrators.
+            </p>
+          </div>
+
+          <button className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-2xs transition-all flex items-center gap-2">
+            <Plus className="w-4 h-4" />
+            Add User
+          </button>
         </div>
 
-        <button className="bg-blue-600 text-white px-5 py-2 rounded-lg">
-          + Add User
-        </button>
-      </div>
+        {/* Stats Grid */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <div className="med-card">
+            <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Total</p>
+            <p className="text-3xl font-bold text-slate-900 mt-2">{users.length}</p>
+          </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-5 mb-8">
-        <div className="bg-white border rounded-xl p-5 text-center">
-          <p className="text-gray-500">Total</p>
-          <h2 className="text-3xl font-bold">{total}</h2>
+          <div className="med-card">
+            <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Active</p>
+            <p className="text-3xl font-bold text-emerald-600 mt-2">{active}</p>
+          </div>
+
+          <div className="med-card">
+            <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Doctors</p>
+            <p className="text-3xl font-bold text-blue-600 mt-2">{doctors}</p>
+          </div>
+
+          <div className="med-card">
+            <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Staff</p>
+            <p className="text-3xl font-bold text-slate-900 mt-2">{staff}</p>
+          </div>
         </div>
 
-        <div className="bg-white border rounded-xl p-5 text-center">
-          <p className="text-gray-500">Active</p>
-          <h2 className="text-3xl font-bold text-green-600">
-            {active}
-          </h2>
+        {/* Users Table */}
+        <div className="space-y-4">
+          {loading ? (
+            <SkeletonLoader rows={5} />
+          ) : users.length === 0 ? (
+            <EmptyState
+              title="No users found"
+              description="No users have been created yet."
+              icon={Users}
+            />
+          ) : (
+            <div className="med-card overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="med-table-header">
+                    <tr>
+                      <th className="px-4 py-3">User</th>
+                      <th className="px-4 py-3">Email</th>
+                      <th className="px-4 py-3">Role</th>
+                      <th className="px-4 py-3">Status</th>
+                      <th className="px-4 py-3">Created</th>
+                      <th className="px-4 py-3 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {users.map((u) => (
+                      <tr key={u.id} className="med-table-row">
+                        <td className="px-4 py-3">
+                          <div className="font-bold text-slate-900">{u.name}</div>
+                        </td>
+                        <td className="px-4 py-3 text-slate-600">{u.email}</td>
+                        <td className="px-4 py-3">
+                          <Badge
+                            variant={
+                              u.role === 'ADMIN'
+                                ? 'purple'
+                                : u.role === 'DOCTOR'
+                                ? 'success'
+                                : u.role === 'STAFF'
+                                ? 'info'
+                                : 'default'
+                            }
+                          >
+                            {u.role}
+                          </Badge>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span
+                            className={`px-2 py-1 rounded-full text-[10px] font-bold ${
+                              u.status === 'ACTIVE' ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'
+                            }`}
+                          >
+                            {u.status}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-slate-500">{formatDate(u.createdAt)}</td>
+                        <td className="px-4 py-3 text-right space-x-2">
+                          <button className="px-3 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold transition-all">
+                            Edit
+                          </button>
+                          <button className="px-3 py-1 bg-red-50 hover:bg-red-100 text-red-700 rounded-lg text-xs font-semibold transition-all">
+                            Disable
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </div>
-
-        <div className="bg-white border rounded-xl p-5 text-center">
-          <p className="text-gray-500">Doctors</p>
-          <h2 className="text-3xl font-bold">{doctors}</h2>
-        </div>
-
-        <div className="bg-white border rounded-xl p-5 text-center">
-          <p className="text-gray-500">Staff</p>
-          <h2 className="text-3xl font-bold">{staff}</h2>
-        </div>
-
-        <div className="bg-white border rounded-xl p-5 text-center">
-          <p className="text-gray-500">Patients</p>
-          <h2 className="text-3xl font-bold">{patients}</h2>
-        </div>
-      </div>
-
-      <div className="bg-white border rounded-xl overflow-hidden">
-        <table className="w-full">
-          <thead className="bg-slate-100">
-            <tr>
-              <th className="text-left p-4">Name</th>
-              <th className="text-left p-4">Role</th>
-              <th className="text-left p-4">Department</th>
-              <th className="text-left p-4">Status</th>
-              <th className="text-left p-4">Last Active</th>
-              <th className="text-left p-4">Patients</th>
-              <th className="text-left p-4">Actions</th>
-            </tr>
-          </thead>
-
-          <tbody>
-            {users.map((user) => (
-              <tr key={user.id} className="border-t">
-                <td className="p-4">
-                  <div className="font-medium">{user.name}</div>
-                  <div className="text-sm text-gray-500">
-                    {user.email}
-                  </div>
-                </td>
-
-                <td className="p-4">{user.role}</td>
-
-                <td className="p-4">{user.department}</td>
-
-                <td className="p-4">
-                  <span
-                    className={`px-3 py-1 rounded-full text-sm ${
-                      user.status === "Active"
-                        ? "bg-green-100 text-green-700"
-                        : "bg-gray-200 text-gray-700"
-                    }`}
-                  >
-                    {user.status}
-                  </span>
-                </td>
-
-                <td className="p-4">{user.lastActive}</td>
-
-                <td className="p-4">{user.patients}</td>
-
-                <td className="p-4 space-x-2">
-                  <button className="bg-blue-600 text-white px-3 py-1 rounded">
-                    Edit
-                  </button>
-
-                  <button className="bg-red-600 text-white px-3 py-1 rounded">
-                    Disable
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </main>
+      </main>
+    </div>
   );
 }
