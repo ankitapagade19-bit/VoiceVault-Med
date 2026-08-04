@@ -25,7 +25,7 @@ export default function LandingPage() {
         </p>
 
         <p className="text-sm text-slate-500 max-w-2xl mx-auto leading-relaxed">
-          Designed for clinical staff, physicians, administrators, and patients with immutable version histories, SHA-256 hash proofs, and real-time audit trails.
+          Designed for clinical staff, physicians, and patients with immutable version histories, SHA-256 hash proofs, and real-time audit trails.
         </p>
 
         {/* Hero CTA Buttons */}
@@ -54,17 +54,7 @@ export default function LandingPage() {
           <p className="text-xs text-slate-500">Separation of duties enforced via zero trust server authorization.</p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
-          <div className="bg-white p-6 rounded-2xl border border-slate-200 space-y-3 shadow-2xs">
-            <div className="w-10 h-10 rounded-xl bg-purple-50 border border-purple-200 flex items-center justify-center text-purple-600">
-              <UserCheck className="w-5 h-5" />
-            </div>
-            <h3 className="text-base font-bold text-slate-900">System Admin</h3>
-            <p className="text-xs text-slate-500 leading-relaxed">
-              Review correction requests, approve/reject changes, inspect audit chains, and manage user status.
-            </p>
-          </div>
-
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
           <div className="bg-white p-6 rounded-2xl border border-slate-200 space-y-3 shadow-2xs">
             <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-600">
               <History className="w-5 h-5" />
