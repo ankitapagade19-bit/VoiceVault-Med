@@ -1,133 +1,111 @@
-import React from 'react';
-import { 
-  FaMicrophoneAlt, FaClipboardList, FaLink, FaShieldAlt, 
-  FaCheckCircle, FaHistory, FaDatabase
-} from 'react-icons/fa';
-import Sidebar from '@/components/Sidebar';
-
-const AuditPage = () => {
+export default function AuditPage() {
   const auditTrail = [
-    { recordId: '#R-3821', version: 'v.4', hash: 'a4f8...3d1e', action: 'Correction approved', timestamp: '2026-08-04 09:23' },
-    { recordId: '#R-3821', version: 'v.3', hash: 'b9e2...7f4a', action: 'Voice pinning', timestamp: '2026-08-03 16:10' },
-    { recordId: '#R-2740', version: 'v.2', hash: 'c81d...9b2f', action: 'Staff update', timestamp: '2026-08-02 11:45' },
-    { recordId: '#R-2740', version: 'v.1', hash: 'e3f0...6a8c', action: 'Initial record', timestamp: '2026-07-30 08:12' },
-  ];
-
-  const stats = [
-    { num: '1,247', label: 'Total Versions', icon: FaHistory },
-    { num: '384', label: 'Unique Records', icon: FaDatabase },
-    { num: '100%', label: 'Chain Integrity', icon: FaShieldAlt },
+    {
+      recordId: "#R-3821",
+      version: "v4",
+      hash: "a4f8...3d1e",
+      action: "Correction Approved",
+      timestamp: "2026-08-04 09:23",
+    },
+    {
+      recordId: "#R-3821",
+      version: "v3",
+      hash: "b9e2...7f4a",
+      action: "Voice Pinning",
+      timestamp: "2026-08-03 16:10",
+    },
+    {
+      recordId: "#R-2740",
+      version: "v2",
+      hash: "c81d...9b2f",
+      action: "Staff Update",
+      timestamp: "2026-08-02 11:45",
+    },
+    {
+      recordId: "#R-2740",
+      version: "v1",
+      hash: "e3f0...6a8c",
+      action: "Initial Record",
+      timestamp: "2026-07-30 08:12",
+    },
   ];
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
-      <Sidebar activeItem="audit" />
-      
-      <main className="flex-1 p-8">
-        {/* Header */}
-        <div className="flex justify-between items-center mb-8 flex-wrap">
-          <h1 className="text-3xl font-semibold text-gray-800 flex items-center gap-3">
-            <span className="bg-blue-100 text-blue-600 p-2 rounded-full">
-              <FaClipboardList />
-            </span>
-            Audit · Immutable Chain
-          </h1>
-          <span className="bg-white px-4 py-2 rounded-full border border-blue-200 text-blue-700 font-medium flex items-center gap-2">
-            <FaCheckCircle className="text-green-500" /> Verified
-          </span>
+    <main className="p-8 bg-gray-50 min-h-screen">
+      <h1 className="text-3xl font-bold text-gray-800">
+        Audit · Immutable Chain
+      </h1>
+
+      <p className="mt-2 text-gray-600">
+        View all record versions and verify the integrity of every medical
+        record stored in VoiceVault.
+      </p>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
+        <div className="rounded-xl border bg-white p-6">
+          <h2 className="text-gray-500">Total Versions</h2>
+          <p className="text-3xl font-bold mt-2">1,247</p>
         </div>
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-8">
-          {stats.map((stat, index) => (
-            <div key={index} className="bg-white p-6 rounded-2xl border border-gray-200 hover:border-blue-300 transition-shadow shadow-sm">
-              <div className="text-2xl font-semibold text-blue-800">{stat.num}</div>
-              <div className="text-sm text-gray-600 mt-1 flex items-center gap-2">
-                <stat.icon className="text-blue-500" /> {stat.label}
-              </div>
-            </div>
-          ))}
+        <div className="rounded-xl border bg-white p-6">
+          <h2 className="text-gray-500">Unique Records</h2>
+          <p className="text-3xl font-bold mt-2">384</p>
         </div>
 
-        {/* Audit Trail Table */}
-        <div className="bg-white rounded-2xl p-6 mb-6 border border-gray-200 shadow-sm">
-          <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-            <span className="bg-blue-50 text-blue-600 p-2 rounded-full">
-              <FaLink />
-            </span>
-            Version History & SHA-256 Hashes
-          </h2>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left text-gray-600 border-b border-gray-200">
-                  <th className="py-3 pr-4 font-semibold">Record ID</th>
-                  <th className="py-3 pr-4 font-semibold">Version</th>
-                  <th className="py-3 pr-4 font-semibold">SHA-256 Hash</th>
-                  <th className="py-3 pr-4 font-semibold">Action</th>
-                  <th className="py-3 pr-4 font-semibold">Timestamp</th>
-                </tr>
-              </thead>
-              <tbody>
-                {auditTrail.map((item, index) => (
-                  <tr key={index} className="border-b border-gray-100 hover:bg-blue-50/30 transition">
-                    <td className="py-3 pr-4 font-medium">{item.recordId}</td>
-                    <td className="py-3 pr-4">
-                      <span className="bg-blue-50 px-3 py-1 rounded-full text-xs text-blue-700">{item.version}</span>
-                    </td>
-                    <td className="py-3 pr-4">
-                      <code className="bg-gray-100 px-3 py-1 rounded text-xs font-mono">{item.hash}</code>
-                    </td>
-                    <td className="py-3 pr-4">{item.action}</td>
-                    <td className="py-3 pr-4 text-gray-600">{item.timestamp}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          
-          {/* Chain Integrity Badge */}
-          <div className="mt-4 bg-blue-50 px-4 py-2 rounded-full inline-flex items-center gap-2 text-sm text-blue-700">
-            <FaLink className="text-blue-500" /> Chain integrity: <strong>verified</strong> · SHA-256
-          </div>
+        <div className="rounded-xl border bg-white p-6">
+          <h2 className="text-gray-500">Chain Integrity</h2>
+          <p className="text-3xl font-bold text-green-600 mt-2">100%</p>
+        </div>
+      </div>
+
+      <div className="mt-8 rounded-xl border bg-white overflow-hidden">
+        <table className="w-full">
+          <thead className="bg-slate-100">
+            <tr>
+              <th className="p-4 text-left">Record</th>
+              <th className="p-4 text-left">Version</th>
+              <th className="p-4 text-left">Hash</th>
+              <th className="p-4 text-left">Action</th>
+              <th className="p-4 text-left">Timestamp</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            {auditTrail.map((item, index) => (
+              <tr key={index} className="border-t">
+                <td className="p-4">{item.recordId}</td>
+                <td className="p-4">{item.version}</td>
+                <td className="p-4 font-mono text-sm">{item.hash}</td>
+                <td className="p-4">{item.action}</td>
+                <td className="p-4">{item.timestamp}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="grid md:grid-cols-3 gap-6 mt-8">
+        <div className="rounded-xl border bg-white p-5">
+          <h3 className="font-semibold">Immutable History</h3>
+          <p className="text-sm text-gray-600 mt-2">
+            Records are never overwritten. Every change creates a new version.
+          </p>
         </div>
 
-        {/* Security Summary */}
-        <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
-          <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-            <span className="bg-blue-50 text-blue-600 p-2 rounded-full">
-              <FaShieldAlt />
-            </span>
-            Cryptographic Guarantees
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="bg-blue-50/50 p-4 rounded-xl border-l-4 border-blue-500">
-              <div className="font-semibold text-blue-800 flex items-center gap-2">
-                <FaLink className="text-blue-500" /> Immutable History
-              </div>
-              <div className="text-sm text-gray-600 mt-1">Records never overwritten; new versions linked to prior hash</div>
-            </div>
-            <div className="bg-blue-50/50 p-4 rounded-xl border-l-4 border-blue-500">
-              <div className="font-semibold text-blue-800 flex items-center gap-2">
-                <FaShieldAlt className="text-blue-500" /> SHA-256 Chain
-              </div>
-              <div className="text-sm text-gray-600 mt-1">Deterministic hashing; tampering breaks the chain</div>
-            </div>
-            <div className="bg-blue-50/50 p-4 rounded-xl border-l-4 border-blue-500">
-              <div className="font-semibold text-blue-800 flex items-center gap-2">
-                <FaDatabase className="text-blue-500" /> IPFS Pinning
-              </div>
-              <div className="text-sm text-gray-600 mt-1">Voice consultations stored with immutable CIDs</div>
-            </div>
-          </div>
+        <div className="rounded-xl border bg-white p-5">
+          <h3 className="font-semibold">SHA-256 Verification</h3>
+          <p className="text-sm text-gray-600 mt-2">
+            Every version is cryptographically linked with its predecessor.
+          </p>
         </div>
 
-        <div className="text-right text-xs text-gray-500 border-t border-gray-200 pt-4 mt-6">
-          <FaMicrophoneAlt className="inline text-blue-500 mr-1" /> VoiceVault Med · cryptographically verified
+        <div className="rounded-xl border bg-white p-5">
+          <h3 className="font-semibold">IPFS Storage</h3>
+          <p className="text-sm text-gray-600 mt-2">
+            Voice consultations are securely pinned using immutable content IDs.
+          </p>
         </div>
-      </main>
-    </div>
+      </div>
+    </main>
   );
-};
-
-export default AuditPage;
+}
