@@ -16,7 +16,10 @@ export async function POST(request: Request) {
         { error: 'Too many login attempts. Please try again later.' },
         {
           status: 429,
-          headers: { 'Retry-After': String(Math.ceil((rateLimit.resetAt - Date.now()) / 1000)) },
+          headers: { 
+            'Retry-After': String(Math.ceil((rateLimit.resetAt - Date.now()) / 1000)),
+            'Cache-Control': 'no-store, max-age=0'
+          },
         }
       );
     }
@@ -27,7 +30,10 @@ export async function POST(request: Request) {
     if (!validation.success) {
       return NextResponse.json(
         { error: 'Invalid input fields', details: validation.error.format() },
-        { status: 400 }
+        { 
+          status: 400,
+          headers: { 'Cache-Control': 'no-store, max-age=0' }
+        }
       );
     }
 
@@ -49,7 +55,13 @@ export async function POST(request: Request) {
         metadata: JSON.stringify({ email, reason: 'User not found' }),
         request,
       });
-      return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
+      return NextResponse.json(
+        { error: 'Invalid credentials' }, 
+        { 
+          status: 401,
+          headers: { 'Cache-Control': 'no-store, max-age=0' }
+        }
+      );
     }
 
     if (user.status !== 'ACTIVE') {
@@ -63,7 +75,10 @@ export async function POST(request: Request) {
       });
       return NextResponse.json(
         { error: 'Account is inactive. Contact administrative staff.' },
-        { status: 403 }
+        { 
+          status: 403,
+          headers: { 'Cache-Control': 'no-store, max-age=0' }
+        }
       );
     }
 
@@ -78,7 +93,13 @@ export async function POST(request: Request) {
         metadata: JSON.stringify({ email, reason: 'Incorrect password' }),
         request,
       });
-      return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
+      return NextResponse.json(
+        { error: 'Invalid credentials' }, 
+        { 
+          status: 401,
+          headers: { 'Cache-Control': 'no-store, max-age=0' }
+        }
+      );
     }
 
     const sessionPayload = {
@@ -103,13 +124,26 @@ export async function POST(request: Request) {
       request,
     });
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: true,
       user: sessionPayload,
       mustChangePassword: user.mustChangePassword,
     });
+
+    // Disable browser caching on login responses
+    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    response.headers.set('Pragma', 'no-cache');
+    response.headers.set('Expires', '0');
+
+    return response;
   } catch (error: any) {
     console.error('Login Route Error:', error);
-    return NextResponse.json({ error: 'Internal server error during authentication' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Internal server error during authentication' }, 
+      { 
+        status: 500,
+        headers: { 'Cache-Control': 'no-store, max-age=0' }
+      }
+    );
   }
 }

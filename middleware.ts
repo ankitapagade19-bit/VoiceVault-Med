@@ -1,90 +1,38 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { jwtVerify } from 'jose';
-
-const COOKIE_NAME = 'voicevault_session';
-const SECRET_KEY = new TextEncoder().encode(
-  process.env.AUTH_SECRET || 'voicevault_med_secure_jwt_secret_key_32bytes_min_length_2026!'
-);
-
-interface SessionPayload {
-  id: string;
-  name: string;
-  email: string;
-  role: 'ADMIN' | 'STAFF' | 'DOCTOR' | 'PATIENT';
-  status: 'ACTIVE' | 'INACTIVE';
-}
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  
+  // Replace 'session_token' with your actual cookie key name if different
+  const token = request.cookies.get('session_token')?.value;
 
-  const isProtectedDoctor = pathname.startsWith('/doctor');
-  const isProtectedStaff = pathname.startsWith('/staff');
-  const isProtectedPatient = pathname.startsWith('/patient');
-  const isProtectedAdmin = pathname.startsWith('/admin');
-  const isProtectedPassword = pathname.startsWith('/password-change');
-  const isAuthPage = pathname === '/login' || pathname === '/register';
+  const isProtectedRoute = 
+    pathname.startsWith('/admin') ||
+    pathname.startsWith('/doctor') ||
+    pathname.startsWith('/staff') ||
+    pathname.startsWith('/patient');
 
-  const token = request.cookies.get(COOKIE_NAME)?.value;
-  let session: SessionPayload | null = null;
-
-  if (token) {
-    try {
-      const { payload } = await jwtVerify(token, SECRET_KEY);
-      session = payload as unknown as SessionPayload;
-    } catch {
-      session = null;
-    }
+  // Prevent unauthenticated access
+  if (isProtectedRoute && !token) {
+    const loginUrl = new URL('/login', request.url);
+    const response = NextResponse.redirect(loginUrl);
+    response.headers.set('Cache-Control', 'no-store, max-age=0');
+    return response;
   }
 
-  // Handle protected routes
-  if (isProtectedDoctor || isProtectedStaff || isProtectedPatient || isProtectedAdmin || isProtectedPassword) {
-    if (!session || session.status !== 'ACTIVE') {
-      const loginUrl = new URL('/login', request.url);
-      loginUrl.searchParams.set('redirect', pathname);
-      return NextResponse.redirect(loginUrl);
-    }
+  const response = NextResponse.next();
 
-    if (isProtectedAdmin && session.role !== 'ADMIN') {
-      return NextResponse.redirect(new URL(getRoleDashboard(session.role), request.url));
-    }
-
-    if (isProtectedDoctor && session.role !== 'DOCTOR' && session.role !== 'ADMIN') {
-      return NextResponse.redirect(new URL(getRoleDashboard(session.role), request.url));
-    }
-
-    if (isProtectedStaff && session.role !== 'STAFF' && session.role !== 'ADMIN') {
-      return NextResponse.redirect(new URL(getRoleDashboard(session.role), request.url));
-    }
-
-    if (isProtectedPatient && session.role !== 'PATIENT' && session.role !== 'ADMIN') {
-      return NextResponse.redirect(new URL(getRoleDashboard(session.role), request.url));
-    }
+  // Prevent back-button viewing of stale sensitive medical records
+  if (isProtectedRoute) {
+    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    response.headers.set('Pragma', 'no-cache');
+    response.headers.set('Expires', '0');
   }
 
-  // Handle auth pages (redirect logged in active users)
-  if (isAuthPage && session && session.status === 'ACTIVE') {
-    return NextResponse.redirect(new URL(getRoleDashboard(session.role), request.url));
-  }
-
-  return NextResponse.next();
-}
-
-function getRoleDashboard(role: 'ADMIN' | 'STAFF' | 'DOCTOR' | 'PATIENT'): string {
-  switch (role) {
-    case 'ADMIN':
-      return '/admin';
-    case 'DOCTOR':
-      return '/doctor';
-    case 'STAFF':
-      return '/staff';
-    case 'PATIENT':
-      return '/patient';
-    default:
-      return '/login';
-  }
+  return response;
 }
 
 export const config = {
-  matcher: ['/doctor/:path*', '/staff/:path*', '/patient/:path*', '/admin/:path*', '/password-change', '/login', '/register'],
+  matcher: ['/admin/:path*', '/doctor/:path*', '/staff/:path*', '/patient/:path*'],
 };
