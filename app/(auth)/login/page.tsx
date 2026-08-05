@@ -55,15 +55,15 @@ export default function LoginPage() {
   return (
     <div className="min-h-[80vh] flex items-center justify-center p-4">
       <div className="w-full max-w-md space-y-6">
-        {/* Header */}
+        {/* Header - FIXED FOR DARK BACKGROUND */}
         <div className="text-center space-y-2">
           <div className="w-12 h-12 rounded-2xl bg-blue-600 mx-auto flex items-center justify-center text-white shadow-md shadow-blue-600/20">
             <Shield className="w-6 h-6 stroke-[2.5]" />
           </div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-            VoiceVault <span className="text-blue-600">Med</span> Portal
+          <h1 className="text-2xl font-bold tracking-tight text-white">
+            VoiceVault <span className="text-blue-400">Med</span> Portal
           </h1>
-          <p className="text-xs text-slate-500">Sign in to access your role workspace</p>
+          <p className="text-xs text-slate-300">Sign in to access your role workspace</p>
         </div>
 
         {/* Login Card */}
