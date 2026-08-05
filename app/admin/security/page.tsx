@@ -1,207 +1,152 @@
+'use client';
+
+import React from 'react';
+import { ShieldCheck, Lock, HardDrive, Database, Key, History, Activity } from 'lucide-react';
+
 export default function SecurityPage() {
   const securityFeatures = [
     {
       title: "SHA-256 Hash Chain",
-      description:
-        "All record versions are linked using deterministic SHA-256 hashes.",
+      description: "All record versions are linked using deterministic SHA-256 hashes.",
       status: "Active",
+      icon: Lock,
     },
     {
       title: "IPFS Voice Pinning",
-      description:
-        "Voice consultations are pinned on IPFS using immutable content IDs.",
+      description: "Voice consultations are pinned on IPFS using immutable content IDs.",
       status: "Active",
+      icon: HardDrive,
     },
     {
       title: "Zero Trust RBAC",
-      description:
-        "Every request is validated using role-based access control.",
+      description: "Every request is validated using role-based access control.",
       status: "Active",
+      icon: ShieldCheck,
     },
     {
       title: "Decentralized Storage",
-      description:
-        "Medical records are securely stored with redundant architecture.",
+      description: "Medical records are securely stored with redundant architecture.",
       status: "Active",
+      icon: Database,
     },
     {
       title: "Cryptographic Keys",
-      description:
-        "Every update is cryptographically verified before being stored.",
+      description: "Every update is cryptographically verified before being stored.",
       status: "Active",
+      icon: Key,
     },
     {
       title: "Immutable Versioning",
-      description:
-        "Records are never overwritten. Every update creates a new version.",
+      description: "Records are never overwritten. Every update creates a new version.",
       status: "Active",
+      icon: History,
     },
   ];
 
   const logs = [
-    {
-      event: "User Login",
-      user: "Dr. Sarah Lin",
-      time: "2026-08-04 10:23",
-      status: "Success",
-    },
-    {
-      event: "Patient Record Access",
-      user: "Michael Torres",
-      time: "2026-08-04 09:45",
-      status: "Success",
-    },
-    {
-      event: "Failed Login Attempt",
-      user: "Unknown",
-      time: "2026-08-04 08:12",
-      status: "Failed",
-    },
-    {
-      event: "Correction Approved",
-      user: "System Admin",
-      time: "2026-08-03 16:20",
-      status: "Success",
-    },
+    { event: "User Login", user: "Dr. Sarah Lin", time: "2026-08-04 10:23", status: "Success" },
+    { event: "Patient Record Access", user: "Michael Torres", time: "2026-08-04 09:45", status: "Success" },
+    { event: "Failed Login Attempt", user: "Unknown", time: "2026-08-04 08:12", status: "Failed" },
+    { event: "Correction Approved", user: "System Admin", time: "2026-08-03 16:20", status: "Success" },
   ];
 
   return (
-    <>
-      <h1 className="text-3xl font-bold text-gray-800">
-        Security Center
-      </h1>
+    <div className="space-y-6 text-slate-900">
+      {/* Page Title Header */}
+      <div className="border-b border-slate-200 pb-4">
+        <h1 className="text-2xl font-bold tracking-tight text-slate-900">Security Center</h1>
+        <p className="text-xs text-slate-600 mt-1">
+          Monitor security, integrity, and Zero Trust protection across VoiceVault.
+        </p>
+      </div>
 
-      <p className="mt-2 text-gray-600">
-        Monitor security, integrity and Zero Trust protection across VoiceVault.
-      </p>
-
-      <div className="grid md:grid-cols-4 gap-6 mt-8">
-        <div className="bg-white rounded-xl border p-6">
-          <p className="text-gray-500">Chain Integrity</p>
-          <h2 className="text-3xl font-bold text-green-600 mt-2">
-            100%
-          </h2>
+      {/* High-Contrast Stat Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
+          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Chain Integrity</p>
+          <p className="text-3xl font-extrabold text-emerald-600 mt-2">100%</p>
         </div>
 
-        <div className="bg-white rounded-xl border p-6">
-          <p className="text-gray-500">Hashed Records</p>
-          <h2 className="text-3xl font-bold mt-2">
-            1,247
-          </h2>
+        <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
+          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Hashed Records</p>
+          <p className="text-3xl font-extrabold text-slate-900 mt-2">1,247</p>
         </div>
 
-        <div className="bg-white rounded-xl border p-6">
-          <p className="text-gray-500">IPFS Records</p>
-          <h2 className="text-3xl font-bold mt-2">
-            384
-          </h2>
+        <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
+          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">IPFS Records</p>
+          <p className="text-3xl font-extrabold text-slate-900 mt-2">384</p>
         </div>
 
-        <div className="bg-white rounded-xl border p-6">
-          <p className="text-gray-500">Active Users</p>
-          <h2 className="text-3xl font-bold mt-2">
-            12
-          </h2>
+        <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
+          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Active Users</p>
+          <p className="text-3xl font-extrabold text-blue-600 mt-2">12</p>
         </div>
       </div>
 
-      <div className="mt-8 bg-white rounded-xl border p-6">
-        <h2 className="text-xl font-semibold mb-5">
-          Security Architecture
-        </h2>
-
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {securityFeatures.map((item, index) => (
-            <div
-              key={index}
-              className="border rounded-xl p-5"
-            >
-              <div className="flex justify-between">
-                <h3 className="font-semibold">
-                  {item.title}
-                </h3>
-
-                <span className="text-green-600 text-sm">
-                  {item.status}
-                </span>
-              </div>
-
-              <p className="text-gray-600 text-sm mt-3">
-                {item.description}
-              </p>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="mt-8 bg-white rounded-xl border overflow-hidden">
-        <div className="p-5 border-b">
-          <h2 className="text-xl font-semibold">
-            Recent Security Events
-          </h2>
-        </div>
-
-        <table className="w-full">
-          <thead className="bg-slate-100">
-            <tr>
-              <th className="text-left p-4">Event</th>
-              <th className="text-left p-4">User</th>
-              <th className="text-left p-4">Timestamp</th>
-              <th className="text-left p-4">Status</th>
-            </tr>
-          </thead>
-
-          <tbody>
-            {logs.map((log, index) => (
-              <tr key={index} className="border-t">
-                <td className="p-4">{log.event}</td>
-                <td className="p-4">{log.user}</td>
-                <td className="p-4">{log.time}</td>
-                <td className="p-4">
-                  <span
-                    className={`px-3 py-1 rounded-full text-sm ${
-                      log.status === "Success"
-                        ? "bg-green-100 text-green-700"
-                        : "bg-red-100 text-red-700"
-                    }`}
-                  >
-                    {log.status}
+      {/* Security Architecture Grid */}
+      <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
+        <h2 className="text-base font-bold text-slate-900 mb-4">Security Architecture</h2>
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {securityFeatures.map((item, index) => {
+            const Icon = item.icon;
+            return (
+              <div key={index} className="border border-slate-200 rounded-xl p-4 bg-slate-50/60">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Icon className="w-4 h-4 text-blue-600" />
+                    <h3 className="font-semibold text-xs text-slate-900">{item.title}</h3>
+                  </div>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                    {item.status}
                   </span>
-                </td>
+                </div>
+                <p className="text-xs text-slate-600 mt-2 leading-relaxed">{item.description}</p>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Recent Security Events Table */}
+      <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+        <div className="p-4 border-b border-slate-200 flex items-center gap-2">
+          <Activity className="w-4 h-4 text-blue-600" />
+          <h2 className="text-base font-bold text-slate-900">Recent Security Events</h2>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs">
+            <thead className="bg-slate-100 text-slate-700 font-semibold border-b border-slate-200">
+              <tr>
+                <th className="px-4 py-3">Event</th>
+                <th className="px-4 py-3">User</th>
+                <th className="px-4 py-3">Timestamp</th>
+                <th className="px-4 py-3">Status</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      <div className="mt-8 grid md:grid-cols-3 gap-6">
-        <div className="bg-white border rounded-xl p-5">
-          <h3 className="font-semibold">
-            Cryptographic Proofs
-          </h3>
-          <p className="text-gray-600 text-sm mt-2">
-            Enabled for every medical record.
-          </p>
-        </div>
-
-        <div className="bg-white border rounded-xl p-5">
-          <h3 className="font-semibold">
-            Immutable History
-          </h3>
-          <p className="text-gray-600 text-sm mt-2">
-            Every record version is permanently preserved.
-          </p>
-        </div>
-
-        <div className="bg-white border rounded-xl p-5">
-          <h3 className="font-semibold">
-            Zero Trust
-          </h3>
-          <p className="text-gray-600 text-sm mt-2">
-            Authentication and authorization are active.
-          </p>
+            </thead>
+            <tbody className="divide-y divide-slate-100 text-slate-800">
+              {logs.map((log, index) => (
+                <tr key={index} className="hover:bg-slate-50 transition-all">
+                  <td className="px-4 py-3 font-semibold text-slate-900">{log.event}</td>
+                  <td className="px-4 py-3 text-slate-600">{log.user}</td>
+                  <td className="px-4 py-3 text-slate-500 font-mono">{log.time}</td>
+                  <td className="px-4 py-3">
+                    <span
+                      className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                        log.status === 'Success'
+                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                          : 'bg-red-50 text-red-700 border border-red-200'
+                      }`}
+                    >
+                      {log.status}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
-    </>
+    </div>
   );
 }
