@@ -31,8 +31,8 @@ export default function AuditPage() {
   ];
 
   return (
-    <main className="p-8 bg-gray-50 min-h-screen">
-      <h1 className="text-3xl font-bold text-gray-800">
+    <>
+    <h1 className="text-3xl font-bold text-gray-800">
         Audit · Immutable Chain
       </h1>
 
@@ -106,6 +106,6 @@ export default function AuditPage() {
           </p>
         </div>
       </div>
-    </main>
+    </>
   );
 }

@@ -37,6 +37,7 @@ export default function UsersPage() {
   const patients = users.filter((u) => u.role === 'PATIENT').length;
 
   return (
+    
     <div className="flex min-h-screen bg-slate-50">
       <Sidebar role="ADMIN" />
 
@@ -59,7 +60,7 @@ export default function UsersPage() {
 
           <button className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-2xs transition-all flex items-center gap-2">
             <Plus className="w-4 h-4" />
-            Add User
+             Add User
           </button>
         </div>
 
@@ -158,7 +159,8 @@ export default function UsersPage() {
             </div>
           )}
         </div>
-      </main>
+        </main>
     </div>
+  
   );
 }

@@ -54,7 +54,7 @@ export default function CorrectionsPage() {
   ).length;
 
   return (
-    <main className="min-h-screen bg-gray-50 p-8">
+    <>
       <h1 className="text-3xl font-bold text-gray-800">
         Correction Requests
       </h1>
@@ -154,6 +154,6 @@ export default function CorrectionsPage() {
           </div>
         ))}
       </div>
-    </main>
+    </>
   );
 }
