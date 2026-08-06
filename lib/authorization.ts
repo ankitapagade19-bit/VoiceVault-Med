@@ -49,7 +49,7 @@ export async function requireRole(
   const authCheck = await requireAuthenticatedUser(session, request);
   if (!authCheck.authorized) return authCheck;
 
-  if (!allowedRoles.includes(session!.role)) {
+  if (!allowedRoles.includes(session!.role as any)) {
     await writeAuditLog({
       userId: session!.id,
       action: 'ACCESS_DENIED',
@@ -67,7 +67,6 @@ export async function requireRole(
       reason: `Forbidden. Role '${session!.role}' is not authorized for this resource.`,
     };
   }
-
   return { authorized: true, status: 200 };
 }
 
