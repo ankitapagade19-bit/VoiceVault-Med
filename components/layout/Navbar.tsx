@@ -12,7 +12,11 @@ export function Navbar() {
 
   const fetchSession = async () => {
     try {
-      const res = await fetch('/api/auth/me');
+      // Added cache: 'no-store' so browser never returns a stale user profile
+      const res = await fetch('/api/auth/me', { 
+        cache: 'no-store',
+        headers: { 'Pragma': 'no-cache' }
+      });
       if (res.ok) {
         const data = await res.json();
         setCurrentUser(data.user);
@@ -29,8 +33,18 @@ export function Navbar() {
   }, [pathname]);
 
   const handleLogout = async () => {
-    await fetch('/api/auth/logout', { method: 'POST' });
-    window.location.href = '/login';
+    try {
+      // Instantly wipe local/session storage on logout action
+      localStorage.clear();
+      sessionStorage.clear();
+      setCurrentUser(null);
+      await fetch('/api/auth/logout', { method: 'POST' });
+    } catch (err) {
+      console.error('Logout failed:', err);
+    } finally {
+      // Hard redirect to login page ensures full layout reset
+      window.location.href = '/login';
+    }
   };
 
   return (
