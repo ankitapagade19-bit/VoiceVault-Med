@@ -1,20 +1,26 @@
 import { NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 
 export async function POST() {
-  const response = NextResponse.json({ success: true, message: 'Logged out successfully' });
+  try {
+    const cookieStore = await cookies();
+    
+    cookieStore.set('session_token', '', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+      expires: new Date(0),
+    });
 
-  // Explicitly clear session cookie (update 'session_token' if your cookie name is different)
-  response.cookies.set('session_token', '', {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    expires: new Date(0),
-    path: '/',
-  });
+    const response = NextResponse.json({ success: true, message: 'Logged out successfully' });
+    
+    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    response.headers.set('Pragma', 'no-cache');
+    response.headers.set('Expires', '0');
 
-  response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
-  response.headers.set('Pragma', 'no-cache');
-  response.headers.set('Expires', '0');
-
-  return response;
+    return response;
+  } catch (error) {
+    return NextResponse.json({ error: 'Failed to terminate session' }, { status: 500 });
+  }
 }
