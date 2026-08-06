@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Shield, Lock, Mail, ArrowRight, AlertCircle, Key } from 'lucide-react';
@@ -11,6 +11,13 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+
+  // Clear client cache and trigger logout cleanup when arriving at login
+  useEffect(() => {
+    localStorage.clear();
+    sessionStorage.clear();
+    fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,7 +62,7 @@ export default function LoginPage() {
   return (
     <div className="min-h-[80vh] flex items-center justify-center p-4">
       <div className="w-full max-w-md space-y-6">
-        {/* Header - FIXED FOR DARK BACKGROUND */}
+        {/* Header - White text for contrast */}
         <div className="text-center space-y-2">
           <div className="w-12 h-12 rounded-2xl bg-blue-600 mx-auto flex items-center justify-center text-white shadow-md shadow-blue-600/20">
             <Shield className="w-6 h-6 stroke-[2.5]" />
