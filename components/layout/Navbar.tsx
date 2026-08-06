@@ -30,9 +30,7 @@ export function Navbar() {
 
   const handleLogout = async () => {
     await fetch('/api/auth/logout', { method: 'POST' });
-    setCurrentUser(null);
-    router.push('/login');
-    router.refresh();
+    window.location.href = '/login';
   };
 
   return (

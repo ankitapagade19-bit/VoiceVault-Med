@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Shield, Lock, Mail, ArrowRight, AlertCircle, Key } from 'lucide-react';
@@ -11,13 +11,6 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
-
-  // Clear client cache and trigger logout cleanup when arriving at login
-  useEffect(() => {
-    localStorage.clear();
-    sessionStorage.clear();
-    fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
-  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,11 +35,12 @@ export default function LoginPage() {
         return;
       }
 
-      router.refresh();
-      if (data.user.role === 'ADMIN') router.push('/admin');
-      else if (data.user.role === 'STAFF') router.push('/staff');
-      else if (data.user.role === 'DOCTOR') router.push('/doctor');
-      else router.push('/patient');
+      // Force a full window location transition instead of router.push
+      // This ensures cookies are re-evaluated fresh by Next.js middleware and headers
+      if (data.user.role === 'ADMIN') window.location.href = '/admin';
+      else if (data.user.role === 'STAFF') window.location.href = '/staff';
+      else if (data.user.role === 'DOCTOR') window.location.href = '/doctor';
+      else window.location.href = '/patient';
     } catch (err: any) {
       setError(err.message || 'Failed to authenticate');
     } finally {
@@ -62,7 +56,7 @@ export default function LoginPage() {
   return (
     <div className="min-h-[80vh] flex items-center justify-center p-4">
       <div className="w-full max-w-md space-y-6">
-        {/* Header - White text for contrast */}
+        {/* Header */}
         <div className="text-center space-y-2">
           <div className="w-12 h-12 rounded-2xl bg-blue-600 mx-auto flex items-center justify-center text-white shadow-md shadow-blue-600/20">
             <Shield className="w-6 h-6 stroke-[2.5]" />
