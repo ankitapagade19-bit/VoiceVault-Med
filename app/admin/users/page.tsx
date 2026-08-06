@@ -1,8 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Sidebar } from '@/components/layout/Sidebar';
-import { Users, UserPlus, Shield, Check, X } from 'lucide-react';
+import { UserPlus, X } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
 
 export default function AdminUserDirectoryPage() {
@@ -62,58 +61,55 @@ export default function AdminUserDirectoryPage() {
   };
 
   return (
-    <div className="flex min-h-screen bg-slate-50">
-      <Sidebar role="ADMIN" />
-      <main className="flex-1 p-6 lg:p-8 space-y-6 max-w-7xl">
-        <div className="flex items-center justify-between border-b border-slate-200 pb-4">
-          <div>
-            <h1 className="text-2xl font-bold text-slate-900">User Directory</h1>
-            <p className="text-xs text-slate-500">Manage all system users, credentials, and role permissions</p>
-          </div>
-          <button
-            onClick={() => setIsModalOpen(true)}
-            className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center gap-2 transition-all shadow-sm"
-          >
-            <UserPlus className="w-4 h-4" />
-            <span>Add New User</span>
-          </button>
+    <div className="p-6 lg:p-8 space-y-6 max-w-7xl mx-auto min-h-screen bg-slate-50">
+      <div className="flex items-center justify-between border-b border-slate-200 pb-4">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">User Directory</h1>
+          <p className="text-xs text-slate-500">Manage all system users, credentials, and role permissions</p>
         </div>
+        <button
+          onClick={() => setIsModalOpen(true)}
+          className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center gap-2 transition-all shadow-sm"
+        >
+          <UserPlus className="w-4 h-4" />
+          <span>Add New User</span>
+        </button>
+      </div>
 
-        {loading ? (
-          <div className="p-8 text-center text-xs text-slate-500">Loading user directory...</div>
-        ) : (
-          <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-slate-50 border-b border-slate-200 font-bold text-slate-700">
-                <tr>
-                  <th className="p-3.5">Name</th>
-                  <th className="p-3.5">Email</th>
-                  <th className="p-3.5">Role</th>
-                  <th className="p-3.5">Status</th>
+      {loading ? (
+        <div className="p-8 text-center text-xs text-slate-500">Loading user directory...</div>
+      ) : (
+        <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
+          <table className="w-full text-left text-xs">
+            <thead className="bg-slate-50 border-b border-slate-200 font-bold text-slate-700">
+              <tr>
+                <th className="p-3.5">Name</th>
+                <th className="p-3.5">Email</th>
+                <th className="p-3.5">Role</th>
+                <th className="p-3.5">Status</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {users.map((usr) => (
+                <tr key={usr.id} className="hover:bg-slate-50/50">
+                  <td className="p-3.5 font-bold text-slate-900">{usr.name}</td>
+                  <td className="p-3.5 text-slate-600 font-mono text-[11px]">{usr.email}</td>
+                  <td className="p-3.5">
+                    <Badge variant="info">{usr.role}</Badge>
+                  </td>
+                  <td className="p-3.5">
+                    <span className="px-2 py-0.5 rounded-full bg-green-50 text-green-700 font-bold text-[10px]">
+                      ACTIVE
+                    </span>
+                  </td>
                 </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {users.map((usr) => (
-                  <tr key={usr.id} className="hover:bg-slate-50/50">
-                    <td className="p-3.5 font-bold text-slate-900">{usr.name}</td>
-                    <td className="p-3.5 text-slate-600 font-mono text-[11px]">{usr.email}</td>
-                    <td className="p-3.5">
-                      <Badge variant="info">{usr.role}</Badge>
-                    </td>
-                    <td className="p-3.5">
-                      <span className="px-2 py-0.5 rounded-full bg-green-50 text-green-700 font-bold text-[10px]">
-                        ACTIVE
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </main>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
 
-      {/* Modal */}
+      {/* Add New User Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4">
           <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-slate-200 space-y-4">
