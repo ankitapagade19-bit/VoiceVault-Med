@@ -1,114 +1,104 @@
-import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/db';
+import { NextRequest, NextResponse } from 'next/server';
+import crypto from 'crypto';
 import { getSession } from '@/lib/auth';
-import { canModifyClinicalRecord } from '@/lib/authorization';
-import { uploadAudioToIpfs } from '@/lib/ipfs';
-import { writeAuditLog } from '@/lib/audit';
+import { prisma } from '@/lib/db';
 
-export async function POST(request: Request) {
-  const session = await getSession();
-  if (!session || session.role !== 'DOCTOR' || !session.doctorProfileId) {
-    return NextResponse.json({ error: 'Only authorized doctors can upload voice consultations' }, { status: 403 });
-  }
-
+export async function POST(request: NextRequest) {
   try {
+    const session = await getSession();
+    if (!session || (session.role !== 'DOCTOR' && session.role !== 'ADMIN')) {
+      return NextResponse.json({ error: 'Unauthorized. Doctor access required.' }, { status: 401 });
+    }
+
     const formData = await request.formData();
-    const file = formData.get('file') as File | null;
-    const recordId = formData.get('recordId') as string | null;
-    const durationStr = formData.get('duration') as string | null;
+    const file = formData.get('file') as File;
+    const patientId = formData.get('patientId') as string;
+    const diagnosis = (formData.get('diagnosis') as string) || 'Voice Consultation Record';
+    const prescription = (formData.get('prescription') as string) || 'N/A';
+    const symptoms = (formData.get('symptoms') as string) || 'Voice Consultation';
+    const notes = (formData.get('notes') as string) || 'Audio consultation recorded and pinned to IPFS.';
 
-    if (!file || !recordId) {
-      return NextResponse.json({ error: 'Audio file and recordId are required' }, { status: 400 });
+    if (!file) {
+      return NextResponse.json({ error: 'No audio file provided.' }, { status: 400 });
     }
 
-    // MIME type check
-    const allowedMimeTypes = ['audio/webm', 'audio/wav', 'audio/mp3', 'audio/mpeg', 'audio/ogg', 'audio/m4a'];
-    if (!allowedMimeTypes.includes(file.type) && !file.type.startsWith('audio/')) {
-      return NextResponse.json({ error: 'Invalid audio format. Please upload a valid audio file.' }, { status: 400 });
+    if (!patientId) {
+      return NextResponse.json({ error: 'Patient ID is required.' }, { status: 400 });
     }
 
-    // Size limit (max 25MB for MVP)
-    if (file.size > 25 * 1024 * 1024) {
-      return NextResponse.json({ error: 'Audio file size exceeds 25MB limit' }, { status: 400 });
-    }
-
-    const record = await prisma.medicalRecord.findUnique({
-      where: { id: recordId },
-      select: { patientId: true },
-    });
-
-    if (!record) {
-      return NextResponse.json({ error: 'Medical record not found' }, { status: 404 });
-    }
-
-    // Zero Trust authorization check
-    const authCheck = await canModifyClinicalRecord(session, record.patientId);
-    if (!authCheck.authorized) {
-      return NextResponse.json({ error: authCheck.reason }, { status: authCheck.status });
-    }
-
+    // 1. Generate SHA-256 Hash of the audio file buffer
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
+    const audioHash = crypto.createHash('sha256').update(buffer).digest('hex');
 
-    // Upload to IPFS / Fallback Adapter
-    const ipfsResult = await uploadAudioToIpfs(buffer, file.name || 'consultation.webm', file.type);
+    // 2. Upload Audio File to Pinata IPFS
+    const pinataFormData = new FormData();
+    pinataFormData.append('file', file);
 
-    const duration = durationStr ? parseInt(durationStr, 10) : undefined;
+    const pinataRes = await fetch('https://api.pinata.cloud/pinning/pinFileToIPFS', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${process.env.PINATA_JWT}`,
+      },
+      body: pinataFormData,
+    });
 
-    // Save metadata in database
-    const voiceConsultation = await prisma.voiceConsultation.create({
+    if (!pinataRes.ok) {
+      const pinataErr = await pinataRes.text();
+      console.error('Pinata upload error:', pinataErr);
+      return NextResponse.json({ error: 'Failed to upload audio to Pinata IPFS.' }, { status: 502 });
+    }
+
+    const pinataData = await pinataRes.json();
+    const ipfsCid = pinataData.IpfsHash;
+
+    // 3. Create parent MedicalRecord
+    const record = await prisma.medicalRecord.create({
       data: {
-        recordId,
-        patientId: record.patientId,
-        doctorId: session.doctorProfileId,
-        ipfsCid: ipfsResult.cid,
-        fileName: file.name || 'voice_consultation.webm',
-        mimeType: file.type || 'audio/webm',
-        fileSize: ipfsResult.fileSize,
-        duration: duration || null,
-        fileHash: ipfsResult.fileHash,
+        patientId,
+        originatingDoctorId: session.doctorProfileId || session.id,
       },
     });
 
-    await writeAuditLog({
-      userId: session.id,
-      action: 'VOICE_UPLOADED',
-      resourceType: 'VOICE_CONSULTATION',
-      resourceId: voiceConsultation.id,
-      patientId: record.patientId,
-      metadata: JSON.stringify({
-        ipfsCid: ipfsResult.cid,
-        fileHash: ipfsResult.fileHash,
-        fileSize: ipfsResult.fileSize,
-        provider: ipfsResult.provider,
-      }),
-      request,
+    // 4. Create child MedicalRecordVersion with all required Prisma schema fields
+    const version = await prisma.medicalRecordVersion.create({
+      data: {
+        versionNumber: 1,
+        diagnosis,
+        prescription,
+        symptoms,
+        notes,
+        createdBy: {
+          connect: { id: session.id },
+        },
+        currentHash: audioHash,
+        record: {
+          connect: { id: record.id },
+        },
+      },
     });
 
-    const patient = await prisma.patientProfile.findUnique({
-      where: { id: record.patientId },
-      select: { userId: true },
+    // 5. Log audit trail entry
+    await prisma.auditLog.create({
+      data: {
+        userId: session.id,
+        action: 'VOICE_RECORD_PINNED_IPFS',
+        resourceType: 'MEDICAL_RECORD',
+        resourceId: record.id,
+        success: true,
+      },
     });
-
-    if (patient) {
-      const { createNotification } = await import('@/lib/notifications');
-      await createNotification({
-        userId: patient.userId,
-        type: 'VOICE_UPLOADED',
-        title: 'Voice Consultation Available',
-        message: `Dr. ${session.name} uploaded a voice consultation (IPFS: ${ipfsResult.cid.substring(0, 12)}...).`,
-        resourceType: 'VOICE_CONSULTATION',
-        resourceId: voiceConsultation.id,
-      });
-    }
 
     return NextResponse.json({
       success: true,
-      voiceConsultation,
-      provider: ipfsResult.provider,
+      recordId: record.id,
+      versionId: version.id,
+      audioHash,
+      ipfsCid,
+      gatewayUrl: `https://gateway.pinata.cloud/ipfs/${ipfsCid}`,
     });
   } catch (error: any) {
-    console.error('Voice Upload Error:', error);
-    return NextResponse.json({ error: 'Failed to process voice consultation upload' }, { status: 500 });
+    console.error('Upload Error:', error);
+    return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
   }
 }
