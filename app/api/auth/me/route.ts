@@ -4,8 +4,8 @@ import { verifySessionToken } from '@/lib/auth';
 
 export async function GET() {
   try {
-    const cookieStore = await cookies();
-    const token = cookieStore.get('session_token')?.value;
+    const cookieStore = cookies();
+    const token = (await Promise.resolve(cookieStore)).get('session_token')?.value;
 
     if (!token) {
       return NextResponse.json(
