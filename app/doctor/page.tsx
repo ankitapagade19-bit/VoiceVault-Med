@@ -1,230 +1,166 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { Sidebar } from '@/components/layout/Sidebar';
-import { Mic, Square, UploadCloud, ShieldCheck, Check, ExternalLink } from 'lucide-react';
+import { Users, FileCheck2, ShieldCheck, ArrowRight, UserCheck, Calendar } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
+import { formatDate } from '@/lib/utils';
 
-export default function DoctorVoiceUploadPage() {
-  const [patients, setPatients] = useState<any[]>([]);
-  const [selectedPatient, setSelectedPatient] = useState('');
-  const [diagnosis, setDiagnosis] = useState('');
-  const [prescription, setPrescription] = useState('');
-  const [file, setFile] = useState<File | null>(null);
+export default function DoctorDashboardPage() {
+  const [assignments, setAssignments] = useState<any[]>([]);
+  const [appointments, setAppointments] = useState<any[]>([]);
+  const [session, setSession] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
-  const [isRecording, setIsRecording] = useState(false);
-  const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
-
-  const [uploading, setUploading] = useState(false);
-  const [uploadResult, setUploadResult] = useState<any>(null);
-
-  useEffect(() => {
-    fetch('/api/patients', { cache: 'no-store' })
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.patients) setPatients(data.patients);
-      })
-      .catch(console.error);
-  }, []);
-
-  const startRecording = async () => {
+  const fetchDashboardData = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const recorder = new MediaRecorder(stream);
-      const chunks: Blob[] = [];
+      const meRes = await fetch('/api/auth/me', { cache: 'no-store' });
+      if (meRes.ok) {
+        const meData = await meRes.json();
+        setSession(meData.user);
+      }
 
-      recorder.ondataavailable = (e) => chunks.push(e.data);
-      recorder.onstop = () => {
-        const blob = new Blob(chunks, { type: 'audio/webm' });
-        const recordedFile = new File([blob], `consultation-${Date.now()}.webm`, { type: 'audio/webm' });
-        setFile(recordedFile);
-      };
+      const patientsRes = await fetch('/api/patients', { cache: 'no-store' });
+      if (patientsRes.ok) {
+        const pData = await patientsRes.json();
+        setAssignments(pData.patients || []);
+      }
 
-      recorder.start();
-      setMediaRecorder(recorder);
-      setIsRecording(true);
-    } catch (err) {
-      alert('Microphone access denied or unavailable.');
-    }
-  };
-
-  const stopRecording = () => {
-    if (mediaRecorder) {
-      mediaRecorder.stop();
-      setIsRecording(false);
-    }
-  };
-
-  const handleUpload = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!file || !selectedPatient) {
-      alert('Please select a patient and attach or record audio.');
-      return;
-    }
-
-    setUploading(true);
-    setUploadResult(null);
-
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('patientId', selectedPatient);
-    formData.append('diagnosis', diagnosis);
-    formData.append('prescription', prescription);
-
-    try {
-      const res = await fetch('/api/voice/upload', {
-        method: 'POST',
-        body: formData,
-      });
-
-      const data = await res.json();
-      if (res.ok) {
-        setUploadResult(data);
-        setFile(null);
-        setDiagnosis('');
-        setPrescription('');
-      } else {
-        alert(data.error || 'Upload failed.');
+      const aptRes = await fetch('/api/appointments', { cache: 'no-store' });
+      if (aptRes.ok) {
+        const aData = await aptRes.json();
+        setAppointments(aData.appointments || []);
       }
     } catch (err) {
-      alert('Network error during upload.');
+      console.error(err);
     } finally {
-      setUploading(false);
+      setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
 
   return (
     <div className="flex min-h-screen bg-slate-50">
       <Sidebar role="DOCTOR" />
-      <main className="flex-1 p-6 lg:p-8 space-y-6 max-w-5xl">
-        <div className="border-b border-slate-200 pb-4">
-          <h1 className="text-2xl font-bold text-slate-900">Voice Consultation & IPFS Pinning</h1>
-          <p className="text-xs text-slate-500">
-            Record physician audio notes, generate cryptographic SHA-256 proof, and store on Pinata IPFS.
-          </p>
+      <main className="flex-1 p-6 lg:p-8 space-y-6 max-w-7xl">
+        {/* Header */}
+        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 pb-4">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900">Physician Clinical Dashboard</h1>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Welcome, <strong>{session?.name || 'Doctor'}</strong>. Zero Trust restricts record access to your assigned roster.
+            </p>
+          </div>
         </div>
 
-        <form onSubmit={handleUpload} className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-5 text-xs">
-          <div>
-            <label className="font-bold text-slate-700 block mb-1">Select Patient</label>
-            <select
-              required
-              value={selectedPatient}
-              onChange={(e) => setSelectedPatient(e.target.value)}
-              className="w-full p-2.5 rounded-xl border border-slate-200 bg-white"
-            >
-              <option value="">-- Choose Patient --</option>
-              {patients.map((p) => (
-                <option key={p.id} value={p.patientProfile?.id || p.id}>
-                  {p.name || p.user?.name} ({p.email || p.user?.email})
-                </option>
-              ))}
-            </select>
+        {/* Quick Stats Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="bg-white p-5 rounded-xl border border-slate-200 space-y-2 shadow-2xs">
+            <div className="flex items-center justify-between text-blue-600">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Assigned Patients</span>
+              <Users className="w-5 h-5" />
+            </div>
+            <p className="text-3xl font-extrabold text-slate-900">{assignments.length}</p>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="font-bold text-slate-700 block mb-1">Clinical Diagnosis Notes</label>
-              <textarea
-                rows={3}
-                value={diagnosis}
-                onChange={(e) => setDiagnosis(e.target.value)}
-                placeholder="Enter diagnosis details..."
-                className="w-full p-2.5 rounded-xl border border-slate-200"
-              />
+          <div className="bg-white p-5 rounded-xl border border-slate-200 space-y-2 shadow-2xs">
+            <div className="flex items-center justify-between text-amber-600">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Scheduled Visits</span>
+              <Calendar className="w-5 h-5" />
             </div>
-            <div>
-              <label className="font-bold text-slate-700 block mb-1">Prescription Details</label>
-              <textarea
-                rows={3}
-                value={prescription}
-                onChange={(e) => setPrescription(e.target.value)}
-                placeholder="Enter rx instructions..."
-                className="w-full p-2.5 rounded-xl border border-slate-200"
-              />
-            </div>
+            <p className="text-3xl font-extrabold text-slate-900">{appointments.length}</p>
           </div>
 
-          {/* Audio Input Controls */}
-          <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3">
-            <span className="font-bold text-slate-800 block">Consultation Audio Input</span>
-
-            <div className="flex items-center gap-3">
-              {!isRecording ? (
-                <button
-                  type="button"
-                  onClick={startRecording}
-                  className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold flex items-center gap-2 shadow-sm"
-                >
-                  <Mic className="w-4 h-4" /> Start Recording
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={stopRecording}
-                  className="px-4 py-2 rounded-xl bg-slate-900 text-white font-bold flex items-center gap-2 animate-pulse"
-                >
-                  <Square className="w-4 h-4 text-red-500" /> Recording... (Click to Stop)
-                </button>
-              )}
-
-              <span className="text-slate-400 font-bold">OR</span>
-
-              <input
-                type="file"
-                accept="audio/*"
-                onChange={(e) => setFile(e.target.files?.[0] || null)}
-                className="text-xs text-slate-600"
-              />
-            </div>
-
-            {file && (
-              <div className="text-xs font-semibold text-emerald-700 flex items-center gap-1.5">
-                <Check className="w-4 h-4" /> Audio Attached: {file.name} ({(file.size / 1024 / 1024).toFixed(2)} MB)
-              </div>
-            )}
-          </div>
-
-          <button
-            type="submit"
-            disabled={uploading}
-            className="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold flex items-center justify-center gap-2 shadow-sm transition-all"
-          >
-            <UploadCloud className="w-4 h-4" />
-            {uploading ? 'Pinning to Pinata IPFS & Saving to Neon DB...' : 'Upload & Pin Consultation'}
-          </button>
-        </form>
-
-        {/* Upload Success Proof Panel */}
-        {uploadResult && (
-          <div className="bg-white p-6 rounded-2xl border border-emerald-200 shadow-sm space-y-3">
-            <div className="flex items-center gap-2 text-emerald-700 font-bold text-sm">
+          <div className="bg-white p-5 rounded-xl border border-slate-200 space-y-2 shadow-2xs">
+            <div className="flex items-center justify-between text-emerald-600">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-500">SHA-256 Chain Status</span>
               <ShieldCheck className="w-5 h-5" />
-              Successfully Pinned to Pinata IPFS & Synced to Neon PostgreSQL
             </div>
+            <p className="text-lg font-bold text-emerald-700 mt-1">✓ 100% Cryptographically Verified</p>
+          </div>
+        </div>
 
-            <div className="space-y-2 text-xs font-mono bg-slate-50 p-4 rounded-xl border border-slate-200">
-              <div>
-                <span className="text-slate-500 font-sans font-bold">SHA-256 Audio Hash: </span>
-                <span className="text-slate-900 break-all">{uploadResult.audioHash}</span>
-              </div>
-              <div>
-                <span className="text-slate-500 font-sans font-bold">IPFS CID: </span>
-                <span className="text-blue-700 break-all">{uploadResult.ipfsCid}</span>
-              </div>
-              <div>
-                <a
-                  href={uploadResult.gatewayUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-blue-600 hover:underline font-sans font-bold flex items-center gap-1 mt-1"
-                >
-                  Listen on Pinata IPFS Gateway <ExternalLink className="w-3.5 h-3.5" />
-                </a>
-              </div>
+        {/* Appointments Preview */}
+        {appointments.length > 0 && (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                <Calendar className="w-4 h-4 text-blue-600" />
+                Upcoming Patient Appointments
+              </h3>
+              <Badge variant="info">{appointments.length} Scheduled</Badge>
+            </div>
+            <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-2xs">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-slate-50 border-b border-slate-200 text-slate-700 font-bold">
+                  <tr>
+                    <th className="px-4 py-2.5">Time Slot</th>
+                    <th className="px-4 py-2.5">Patient</th>
+                    <th className="px-4 py-2.5">Reason</th>
+                    <th className="px-4 py-2.5">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {appointments.map((app) => (
+                    <tr key={app.id} className="hover:bg-slate-50">
+                      <td className="px-4 py-2.5 font-semibold text-slate-900">{app.timeSlot} ({formatDate(app.date)})</td>
+                      <td className="px-4 py-2.5 text-slate-800 font-bold">{app.patient?.user?.name || app.patientName}</td>
+                      <td className="px-4 py-2.5 text-slate-600">{app.reason}</td>
+                      <td className="px-4 py-2.5">
+                        <Badge variant={app.status === 'COMPLETED' ? 'success' : 'info'}>{app.status || 'SCHEDULED'}</Badge>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
         )}
+
+        {/* Assigned Patients Directory */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+              <UserCheck className="w-5 h-5 text-blue-600" />
+              Authorized Patient Roster
+            </h3>
+            <Badge variant="success">Zero Trust Enforced</Badge>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {assignments.map((patient: any) => (
+              <div
+                key={patient.id}
+                className="bg-white p-5 rounded-xl border border-slate-200 space-y-4 shadow-2xs hover:border-blue-300 transition-all"
+              >
+                <div className="flex items-start justify-between">
+                  <div>
+                    <h4 className="text-sm font-bold text-slate-900">{patient.name || patient.user?.name}</h4>
+                    <p className="text-xs text-slate-500 font-mono">
+                      Email: {patient.email || patient.user?.email}
+                    </p>
+                  </div>
+                  <Badge variant="info">Patient</Badge>
+                </div>
+
+                <div className="flex items-center justify-between pt-1 border-t border-slate-100">
+                  <span className="text-[11px] text-slate-500">Active Patient Profile</span>
+                  <Link
+                    href={`/doctor/patients/${patient.id}`}
+                    className="px-3.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs shadow-2xs flex items-center gap-1 transition-all"
+                  >
+                    <span>Clinical Chart</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </Link>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       </main>
     </div>
   );

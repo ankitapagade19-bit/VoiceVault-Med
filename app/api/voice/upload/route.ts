@@ -12,7 +12,9 @@ export async function POST(request: NextRequest) {
 
     const formData = await request.formData();
     const file = formData.get('file') as File;
-    const patientId = formData.get('patientId') as string;
+    let patientId = formData.get('patientId') as string;
+    const recordId = formData.get('recordId') as string;
+
     const diagnosis = (formData.get('diagnosis') as string) || 'Voice Consultation Record';
     const prescription = (formData.get('prescription') as string) || 'N/A';
     const symptoms = (formData.get('symptoms') as string) || 'Voice Consultation';
@@ -22,16 +24,27 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No audio file provided.' }, { status: 400 });
     }
 
+    // Fallback: If patientId isn't sent directly, look it up from recordId
+    if (!patientId && recordId) {
+      const existingRecord = await prisma.medicalRecord.findUnique({
+        where: { id: recordId },
+        select: { patientId: true },
+      });
+      if (existingRecord) {
+        patientId = existingRecord.patientId;
+      }
+    }
+
     if (!patientId) {
       return NextResponse.json({ error: 'Patient ID is required.' }, { status: 400 });
     }
 
-    // 1. Generate SHA-256 Hash of the audio file buffer
+    // 1. Generate SHA-256 Hash of raw audio buffer
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
     const audioHash = crypto.createHash('sha256').update(buffer).digest('hex');
 
-    // 2. Upload Audio File to Pinata IPFS
+    // 2. Upload File to Pinata IPFS
     const pinataFormData = new FormData();
     pinataFormData.append('file', file);
 
@@ -44,23 +57,25 @@ export async function POST(request: NextRequest) {
     });
 
     if (!pinataRes.ok) {
-      const pinataErr = await pinataRes.text();
-      console.error('Pinata upload error:', pinataErr);
       return NextResponse.json({ error: 'Failed to upload audio to Pinata IPFS.' }, { status: 502 });
     }
 
     const pinataData = await pinataRes.json();
     const ipfsCid = pinataData.IpfsHash;
 
-    // 3. Create parent MedicalRecord
-    const record = await prisma.medicalRecord.create({
-      data: {
-        patientId,
-        originatingDoctorId: session.doctorProfileId || session.id,
-      },
-    });
+    // 3. Obtain target MedicalRecord ID
+    let targetRecordId = recordId;
+    if (!targetRecordId) {
+      const record = await prisma.medicalRecord.create({
+        data: {
+          patientId,
+          originatingDoctorId: session.doctorProfileId || session.id,
+        },
+      });
+      targetRecordId = record.id;
+    }
 
-    // 4. Create child MedicalRecordVersion with all required Prisma schema fields
+    // 4. Create child MedicalRecordVersion with IPFS proof
     const version = await prisma.medicalRecordVersion.create({
       data: {
         versionNumber: 1,
@@ -68,30 +83,28 @@ export async function POST(request: NextRequest) {
         prescription,
         symptoms,
         notes,
-        createdBy: {
-          connect: { id: session.id },
-        },
+        createdBy: { connect: { id: session.id } },
         currentHash: audioHash,
         record: {
-          connect: { id: record.id },
+          connect: { id: targetRecordId },
         },
       },
     });
 
-    // 5. Log audit trail entry
+    // 5. Audit Log
     await prisma.auditLog.create({
       data: {
         userId: session.id,
         action: 'VOICE_RECORD_PINNED_IPFS',
         resourceType: 'MEDICAL_RECORD',
-        resourceId: record.id,
+        resourceId: targetRecordId,
         success: true,
       },
     });
 
     return NextResponse.json({
       success: true,
-      recordId: record.id,
+      recordId: targetRecordId,
       versionId: version.id,
       audioHash,
       ipfsCid,
