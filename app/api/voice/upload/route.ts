@@ -24,7 +24,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No audio file provided.' }, { status: 400 });
     }
 
-    // Fallback: If patientId isn't sent directly, look it up from recordId
     if (!patientId && recordId) {
       const existingRecord = await prisma.medicalRecord.findUnique({
         where: { id: recordId },
@@ -44,26 +43,39 @@ export async function POST(request: NextRequest) {
     const buffer = Buffer.from(arrayBuffer);
     const audioHash = crypto.createHash('sha256').update(buffer).digest('hex');
 
-    // 2. Upload File to Pinata IPFS
+    // 2. Prepare Pinata Request Body
     const pinataFormData = new FormData();
-    pinataFormData.append('file', file);
+    const fileBlob = new Blob([buffer], { type: file.type || 'audio/webm' });
+    pinataFormData.append('file', fileBlob, file.name || `consultation-${Date.now()}.webm`);
 
+    const pinataJwt = process.env.PINATA_JWT;
+    if (!pinataJwt) {
+      console.error('PINATA_JWT environment variable is missing in .env');
+      return NextResponse.json({ error: 'Pinata configuration error on server.' }, { status: 500 });
+    }
+
+    // 3. Upload File to Pinata IPFS
     const pinataRes = await fetch('https://api.pinata.cloud/pinning/pinFileToIPFS', {
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${process.env.PINATA_JWT}`,
+        Authorization: `Bearer ${pinataJwt.trim()}`,
       },
       body: pinataFormData,
     });
 
     if (!pinataRes.ok) {
-      return NextResponse.json({ error: 'Failed to upload audio to Pinata IPFS.' }, { status: 502 });
+      const pinataErrorText = await pinataRes.text();
+      console.error('Pinata API Error Response:', pinataErrorText);
+      return NextResponse.json(
+        { error: `Pinata API Error: ${pinataRes.statusText}` },
+        { status: 502 }
+      );
     }
 
     const pinataData = await pinataRes.json();
     const ipfsCid = pinataData.IpfsHash;
 
-    // 3. Obtain target MedicalRecord ID
+    // 4. Obtain target MedicalRecord ID
     let targetRecordId = recordId;
     if (!targetRecordId) {
       const record = await prisma.medicalRecord.create({
@@ -75,7 +87,7 @@ export async function POST(request: NextRequest) {
       targetRecordId = record.id;
     }
 
-    // 4. Create child MedicalRecordVersion with IPFS proof
+    // 5. Create child MedicalRecordVersion with IPFS proof
     const version = await prisma.medicalRecordVersion.create({
       data: {
         versionNumber: 1,
@@ -91,7 +103,7 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // 5. Audit Log
+    // 6. Audit Log
     await prisma.auditLog.create({
       data: {
         userId: session.id,
@@ -111,7 +123,7 @@ export async function POST(request: NextRequest) {
       gatewayUrl: `https://gateway.pinata.cloud/ipfs/${ipfsCid}`,
     });
   } catch (error: any) {
-    console.error('Upload Error:', error);
+    console.error('Upload Endpoint Catch Error:', error);
     return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
   }
 }
