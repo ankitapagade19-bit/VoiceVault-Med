@@ -7,16 +7,19 @@ import { Shield, LogOut, User as UserIcon } from 'lucide-react';
 
 export function Navbar() {
   const [currentUser, setCurrentUser] = useState<any>(null);
-  const router = useRouter();
   const pathname = usePathname();
 
   const fetchSession = async () => {
     try {
-      // Added cache: 'no-store' so browser never returns a stale user profile
-      const res = await fetch('/api/auth/me', { 
+      // Append timestamp query parameter to bypass browser/disk level HTTP cache completely
+      const res = await fetch(`/api/auth/me?ts=${Date.now()}`, { 
         cache: 'no-store',
-        headers: { 'Pragma': 'no-cache' }
+        headers: { 
+          'Pragma': 'no-cache',
+          'Cache-Control': 'no-cache, no-store, must-revalidate' 
+        }
       });
+      
       if (res.ok) {
         const data = await res.json();
         setCurrentUser(data.user);
@@ -34,15 +37,19 @@ export function Navbar() {
 
   const handleLogout = async () => {
     try {
-      // Instantly wipe local/session storage on logout action
+      // Wiping state immediately prevents layout flicker while network request finishes
+      setCurrentUser(null);
       localStorage.clear();
       sessionStorage.clear();
-      setCurrentUser(null);
-      await fetch('/api/auth/logout', { method: 'POST' });
+
+      await fetch('/api/auth/logout', { 
+        method: 'POST',
+        headers: { 'Cache-Control': 'no-cache' }
+      });
     } catch (err) {
-      console.error('Logout failed:', err);
+      console.error('Logout request failed:', err);
     } finally {
-      // Hard redirect to login page ensures full layout reset
+      // Hard refresh and redirect clears Next.js router cache
       window.location.href = '/login';
     }
   };
