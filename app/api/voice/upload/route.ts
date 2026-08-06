@@ -4,6 +4,7 @@ import { getSession } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 
 export async function POST(request: NextRequest) {
+  console.log('---> Upload endpoint hit');
   try {
     const session = await getSession();
     if (!session || (session.role !== 'DOCTOR' && session.role !== 'ADMIN')) {
@@ -13,7 +14,7 @@ export async function POST(request: NextRequest) {
     const formData = await request.formData();
     const file = formData.get('file') as File;
     let patientId = formData.get('patientId') as string;
-    let recordId = (formData.get('recordId') as string) || undefined;
+    const recordId = formData.get('recordId') as string;
 
     const diagnosis = (formData.get('diagnosis') as string) || 'Voice Consultation Record';
     const prescription = (formData.get('prescription') as string) || 'N/A';
@@ -38,54 +39,61 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Patient ID is required.' }, { status: 400 });
     }
 
-    // 1. Generate SHA-256 Hash of raw audio buffer
+    console.log('---> Generating SHA-256 Hash...');
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
     const audioHash = crypto.createHash('sha256').update(buffer).digest('hex');
 
-    // 2. Prepare Pinata Request Body
+    // Prepare Form Data for Pinata API
     const pinataFormData = new FormData();
     const fileBlob = new Blob([buffer], { type: file.type || 'audio/webm' });
     pinataFormData.append('file', fileBlob, file.name || `consultation-${Date.now()}.webm`);
 
-    const pinataJwt = process.env.PINATA_JWT;
-    if (!pinataJwt) {
-      console.error('PINATA_JWT environment variable is missing in .env');
-      return NextResponse.json({ error: 'Pinata configuration error on server.' }, { status: 500 });
-    }
-
-    // 3. Set headers dynamically based on configured credentials
     const headers: Record<string, string> = {};
+    const pinataJwt = process.env.PINATA_JWT;
+    const pinataApiKey = process.env.PINATA_API_KEY;
+    const pinataSecretKey = process.env.PINATA_SECRET_KEY;
 
-    if (process.env.PINATA_JWT) {
-      headers['Authorization'] = `Bearer ${process.env.PINATA_JWT.trim()}`;
-    } else if (process.env.PINATA_API_KEY && process.env.PINATA_SECRET_KEY) {
-      headers['pinata_api_key'] = process.env.PINATA_API_KEY.trim();
-      headers['pinata_secret_api_key'] = process.env.PINATA_SECRET_KEY.trim();
+    if (pinataJwt && pinataJwt.trim() !== '') {
+      headers['Authorization'] = `Bearer ${pinataJwt.trim()}`;
+    } else if (pinataApiKey && pinataSecretKey) {
+      headers['pinata_api_key'] = pinataApiKey.trim();
+      headers['pinata_secret_api_key'] = pinataSecretKey.trim();
     } else {
+      console.error('Missing Pinata keys in .env');
       return NextResponse.json(
-        { error: 'Pinata credentials missing. Provide PINATA_JWT or API Key/Secret in .env' },
+        { error: 'Pinata API credentials missing in .env configuration.' },
         { status: 500 }
       );
     }
 
-    // 4. Upload File to Pinata IPFS
+    console.log('---> Sending request to Pinata IPFS...');
+    
+    // Add 10-second timeout controller so fetch never hangs the server
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
+
     const pinataRes = await fetch('https://api.pinata.cloud/pinning/pinFileToIPFS', {
       method: 'POST',
       headers,
       body: pinataFormData,
-    });
+      signal: controller.signal,
+    }).finally(() => clearTimeout(timeoutId));
+
     if (!pinataRes.ok) {
-      const text = await pinataRes.text();
-      console.error('Pinata upload failed:', pinataRes.status, text);
-      return NextResponse.json({ error: 'Failed to upload to Pinata' }, { status: 502 });
+      const errorText = await pinataRes.text();
+      console.error('Pinata Rejected Upload:', pinataRes.status, errorText);
+      return NextResponse.json(
+        { error: `Pinata IPFS Error (${pinataRes.status}): ${errorText || pinataRes.statusText}` },
+        { status: 502 }
+      );
     }
 
     const pinataJson = await pinataRes.json();
     const ipfsCid = pinataJson?.IpfsHash || pinataJson?.ipfsHash || pinataJson?.hash;
+    console.log('---> Pinata Success! CID:', ipfsCid);
 
-    // ensure we have a target record to attach the version to
-    // ensure we have a target record to attach the version to
+    // Save to Database
     let targetRecordId = recordId;
     if (!targetRecordId) {
       const newRecord = await prisma.medicalRecord.create({
@@ -97,7 +105,6 @@ export async function POST(request: NextRequest) {
       targetRecordId = newRecord.id;
     }
 
-    // 5. Create child MedicalRecordVersion with IPFS proof
     const version = await prisma.medicalRecordVersion.create({
       data: {
         versionNumber: 1,
@@ -105,15 +112,16 @@ export async function POST(request: NextRequest) {
         prescription,
         symptoms,
         notes,
-        createdBy: { connect: { id: session.id } },
         currentHash: audioHash,
+        createdBy: {
+          connect: { id: session.id },
+        },
         record: {
           connect: { id: targetRecordId },
         },
       },
     });
-
-    // 6. Audit Log
+    
     await prisma.auditLog.create({
       data: {
         userId: session.id,
@@ -130,10 +138,13 @@ export async function POST(request: NextRequest) {
       versionId: version.id,
       audioHash,
       ipfsCid,
-      gatewayUrl: ipfsCid ? `https://gateway.pinata.cloud/ipfs/${ipfsCid}` : null,
+      gatewayUrl: `https://gateway.pinata.cloud/ipfs/${ipfsCid}`,
     });
   } catch (error: any) {
-    console.error('Upload Endpoint Catch Error:', error);
+    console.error('Upload Route Error:', error);
+    if (error.name === 'AbortError') {
+      return NextResponse.json({ error: 'Pinata upload timed out (network issue).' }, { status: 504 });
+    }
     return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
   }
 }
