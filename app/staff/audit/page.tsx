@@ -3,14 +3,13 @@ import { prisma } from '@/lib/db';
 import { getSession } from '@/lib/auth';
 import { requireRole } from '@/lib/authorization';
 import { Sidebar } from '@/components/layout/Sidebar';
-import { History, ShieldCheck, Filter } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
 import { formatDate } from '@/lib/utils';
 import { redirect } from 'next/navigation';
 
 export default async function StaffAuditPage() {
   const session = await getSession();
-  const auth = await requireRole(session, ['STAFF']);
+  const auth = await requireRole(session, ['STAFF', 'ADMIN']);
   if (!auth.authorized) redirect('/login');
 
   const logs = await prisma.auditLog.findMany({
@@ -22,7 +21,7 @@ export default async function StaffAuditPage() {
   });
 
   return (
-    <div className="flex min-h-[calc(100vh-4rem)]">
+    <div className="flex min-h-[calc(100vh-4rem)] bg-slate-900">
       <Sidebar role="STAFF" />
       <div className="flex-1 p-6 space-y-6">
         <div className="flex items-center justify-between border-b border-slate-800 pb-4">
@@ -41,11 +40,9 @@ export default async function StaffAuditPage() {
               <thead className="bg-slate-950/80 uppercase tracking-wider text-slate-400 border-b border-slate-800">
                 <tr>
                   <th className="px-6 py-3.5">Timestamp</th>
-                  <th className="px-6 py-3.5">Actor</th>
+                  <th className="px-6 py-3.5">Actor / User</th>
                   <th className="px-6 py-3.5">Action Event</th>
-                  <th className="px-6 py-3.5">Resource</th>
                   <th className="px-6 py-3.5">Result</th>
-                  <th className="px-6 py-3.5">Metadata Payload</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/60 font-mono text-[11px]">
@@ -61,18 +58,12 @@ export default async function StaffAuditPage() {
                         {log.action}
                       </Badge>
                     </td>
-                    <td className="px-6 py-3.5 text-slate-300">
-                      {log.resourceType} {log.resourceId ? `(${log.resourceId.substring(0, 10)}...)` : ''}
-                    </td>
                     <td className="px-6 py-3.5">
                       {log.success ? (
                         <span className="text-emerald-400 font-bold">SUCCESS</span>
                       ) : (
                         <span className="text-red-400 font-bold">DENIED / FAIL</span>
                       )}
-                    </td>
-                    <td className="px-6 py-3.5 max-w-xs truncate text-slate-400" title={log.metadata || ''}>
-                      {log.metadata || '-'}
                     </td>
                   </tr>
                 ))}
