@@ -9,6 +9,16 @@ export async function POST(req: NextRequest) {
   try {
     const { transcript } = await req.json();
 
+    if (!transcript) {
+      console.error("[ai-summary API Error] No transcript provided in request body");
+      return NextResponse.json(
+        { error: "Transcript is required" },
+        { status: 400 }
+      );
+    }
+
+    console.log("[ai-summary API] Generating summary for transcript snippet:", transcript.substring(0, 100));
+
     const completion = await groq.chat.completions.create({
       model: "llama-3.1-8b-instant",
       messages: [
@@ -40,16 +50,16 @@ Return ONLY valid JSON in this format:
       .replace(/```/g, "")
       .trim();
 
-    console.log("Groq Response:", cleaned);
+    console.log("[ai-summary API Success] Groq Parsed Response:", cleaned);
 
     const parsed = JSON.parse(cleaned);
 
     return NextResponse.json(parsed);
-  } catch (err) {
-    console.error(err);
+  } catch (err: any) {
+    console.error("[ai-summary API Error]", err?.message || err);
     return NextResponse.json(
-      { error: "Failed to generate summary" },
+      { error: err?.message || "Failed to generate summary" },
       { status: 500 }
     );
   }
-}
+}
