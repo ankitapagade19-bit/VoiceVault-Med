@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import { Shield, LogOut, User as UserIcon } from 'lucide-react';
@@ -8,8 +8,9 @@ import { Shield, LogOut, User as UserIcon } from 'lucide-react';
 export function Navbar() {
   const [currentUser, setCurrentUser] = useState<any>(null);
   const pathname = usePathname();
+  const router = useRouter();
 
-  const fetchSession = async () => {
+  const fetchSession = useCallback(async () => {
     try {
       // Append timestamp query parameter to bypass browser/disk level HTTP cache completely
       const res = await fetch(`/api/auth/me?ts=${Date.now()}`, { 
@@ -29,11 +30,25 @@ export function Navbar() {
     } catch {
       setCurrentUser(null);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchSession();
-  }, [pathname]);
+  }, [pathname, fetchSession]);
+
+  // Handle Browser Back-Forward Cache (bfcache) restoration
+  useEffect(() => {
+    const handlePageShow = (event: PageTransitionEvent) => {
+      if (event.persisted) {
+        // Re-fetch the real active session and revalidate client routing
+        fetchSession();
+        router.refresh();
+      }
+    };
+
+    window.addEventListener('pageshow', handlePageShow);
+    return () => window.removeEventListener('pageshow', handlePageShow);
+  }, [fetchSession, router]);
 
   const handleLogout = async () => {
     try {
