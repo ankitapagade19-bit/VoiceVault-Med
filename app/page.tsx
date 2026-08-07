@@ -6,7 +6,6 @@ import { ArrowRight, ShieldCheck, History, Mic, Lock, FileCheck2, Activity, User
 import { Badge } from '@/components/ui/Badge';
 
 export const dynamic = 'force-dynamic';
-export const revalidate = 0;
 
 export default function LandingPage() {
   return (
