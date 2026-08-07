@@ -4,7 +4,6 @@ import { getSession } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 
 export async function POST(request: NextRequest) {
-  console.log('---> Upload endpoint hit');
   try {
     const session = await getSession();
     if (!session || (session.role !== 'DOCTOR' && session.role !== 'ADMIN')) {
@@ -25,6 +24,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No audio file provided.' }, { status: 400 });
     }
 
+    // Resolve patientId if missing
     if (!patientId && recordId) {
       const existingRecord = await prisma.medicalRecord.findUnique({
         where: { id: recordId },
@@ -39,16 +39,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Patient ID is required.' }, { status: 400 });
     }
 
-    console.log('---> Generating SHA-256 Hash...');
+    // 1. Generate SHA-256 Hash of raw audio buffer
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
     const audioHash = crypto.createHash('sha256').update(buffer).digest('hex');
 
-    // Prepare Form Data for Pinata API
+    // 2. Prepare Form Data for Pinata API
     const pinataFormData = new FormData();
     const fileBlob = new Blob([buffer], { type: file.type || 'audio/webm' });
     pinataFormData.append('file', fileBlob, file.name || `consultation-${Date.now()}.webm`);
 
+    // 3. Configure Headers
     const headers: Record<string, string> = {};
     const pinataJwt = process.env.PINATA_JWT;
     const pinataApiKey = process.env.PINATA_API_KEY;
@@ -60,16 +61,13 @@ export async function POST(request: NextRequest) {
       headers['pinata_api_key'] = pinataApiKey.trim();
       headers['pinata_secret_api_key'] = pinataSecretKey.trim();
     } else {
-      console.error('Missing Pinata keys in .env');
       return NextResponse.json(
         { error: 'Pinata API credentials missing in .env configuration.' },
         { status: 500 }
       );
     }
 
-    console.log('---> Sending request to Pinata IPFS...');
-    
-    // Add 10-second timeout controller so fetch never hangs the server
+    // 4. Send File to Pinata IPFS
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 10000);
 
@@ -82,7 +80,6 @@ export async function POST(request: NextRequest) {
 
     if (!pinataRes.ok) {
       const errorText = await pinataRes.text();
-      console.error('Pinata Rejected Upload:', pinataRes.status, errorText);
       return NextResponse.json(
         { error: `Pinata IPFS Error (${pinataRes.status}): ${errorText || pinataRes.statusText}` },
         { status: 502 }
@@ -91,9 +88,8 @@ export async function POST(request: NextRequest) {
 
     const pinataJson = await pinataRes.json();
     const ipfsCid = pinataJson?.IpfsHash || pinataJson?.ipfsHash || pinataJson?.hash;
-    console.log('---> Pinata Success! CID:', ipfsCid);
 
-    // Save to Database
+    // 5. Ensure parent MedicalRecord exists
     let targetRecordId = recordId;
     if (!targetRecordId) {
       const newRecord = await prisma.medicalRecord.create({
@@ -105,9 +101,19 @@ export async function POST(request: NextRequest) {
       targetRecordId = newRecord.id;
     }
 
+    // 6. DYNAMIC VERSION CALCULATOR: Find highest versionNumber for this recordId
+    const latestVersionRecord = await prisma.medicalRecordVersion.findFirst({
+      where: { recordId: targetRecordId },
+      orderBy: { versionNumber: 'desc' },
+      select: { versionNumber: true },
+    });
+
+    const nextVersionNumber = latestVersionRecord ? latestVersionRecord.versionNumber + 1 : 1;
+
+    // 7. Create MedicalRecordVersion entry with incremented versionNumber
     const version = await prisma.medicalRecordVersion.create({
       data: {
-        versionNumber: 1,
+        versionNumber: nextVersionNumber,
         diagnosis,
         prescription,
         symptoms,
@@ -121,7 +127,8 @@ export async function POST(request: NextRequest) {
         },
       },
     });
-    
+
+    // 8. Audit Log
     await prisma.auditLog.create({
       data: {
         userId: session.id,
@@ -136,15 +143,13 @@ export async function POST(request: NextRequest) {
       success: true,
       recordId: targetRecordId,
       versionId: version.id,
+      versionNumber: nextVersionNumber,
       audioHash,
       ipfsCid,
       gatewayUrl: `https://gateway.pinata.cloud/ipfs/${ipfsCid}`,
     });
   } catch (error: any) {
     console.error('Upload Route Error:', error);
-    if (error.name === 'AbortError') {
-      return NextResponse.json({ error: 'Pinata upload timed out (network issue).' }, { status: 504 });
-    }
     return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
   }
 }
