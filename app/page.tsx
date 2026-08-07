@@ -5,6 +5,9 @@ import Link from 'next/link';
 import { ArrowRight, ShieldCheck, History, Mic, Lock, FileCheck2, Activity, UserCheck } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export default function LandingPage() {
   return (
     <div className="space-y-16 py-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
