@@ -5,12 +5,21 @@ import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import { Shield, LogOut, User as UserIcon } from 'lucide-react';
 
+const isPublicPage = (path: string) => {
+  return path === '/' || path === '/login' || path === '/register' || path === '/password-change';
+};
+
 export function Navbar() {
   const [currentUser, setCurrentUser] = useState<any>(null);
   const pathname = usePathname();
   const router = useRouter();
 
   const fetchSession = useCallback(async () => {
+    if (isPublicPage(window.location.pathname)) {
+      setCurrentUser(null);
+      return;
+    }
+
     try {
       // Append timestamp query parameter to bypass browser/disk level HTTP cache completely
       const res = await fetch(`/api/auth/me?ts=${Date.now()}`, { 
@@ -21,7 +30,7 @@ export function Navbar() {
         }
       });
       
-      if (res.ok) {
+      if (res.ok && !isPublicPage(window.location.pathname)) {
         const data = await res.json();
         setCurrentUser(data.user);
       } else {
@@ -33,16 +42,24 @@ export function Navbar() {
   }, []);
 
   useEffect(() => {
-    fetchSession();
+    if (isPublicPage(pathname)) {
+      setCurrentUser(null);
+    } else {
+      fetchSession();
+    }
   }, [pathname, fetchSession]);
 
   // Handle Browser Back-Forward Cache (bfcache) restoration
   useEffect(() => {
     const handlePageShow = (event: PageTransitionEvent) => {
       if (event.persisted) {
-        // Re-fetch the real active session and revalidate client routing
-        fetchSession();
-        router.refresh();
+        if (isPublicPage(window.location.pathname)) {
+          setCurrentUser(null);
+        } else {
+          // Re-fetch the real active session and revalidate client routing
+          fetchSession();
+          router.refresh();
+        }
       }
     };
 
