@@ -1,5 +1,7 @@
 "use client";
 
+import { getIpfsAudioUrl } from '@/lib/ipfs-client';
+
 import React, { useState, useRef } from "react";
 
 // Existing IPFS upload implementation - kept intact and read-only
@@ -150,8 +152,8 @@ export default function VoiceRecorder({
       try {
         ipfsHash = await uploadToIPFS(audioBlob);
         setIpfsHashVal(ipfsHash);
-        const gateway = process.env.NEXT_PUBLIC_PINATA_GATEWAY_URL || "https://gateway.pinata.cloud/ipfs";
-        setIpfsAudioUrl(`${gateway}/${ipfsHash}`);
+        // Use the authenticated streaming proxy (same as VoicePlayer) to avoid gateway auth issues
+        setIpfsAudioUrl(getIpfsAudioUrl(ipfsHash));
       } catch (ipfsError) {
         console.warn("[VoiceRecorder] IPFS Upload warning:", ipfsError);
       }

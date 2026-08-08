@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Patient ID is required.' }, { status: 400 });
     }
 
-    // 1. Generate SHA-256 Hash of raw audio buffer
+    // 1. Generate SHA-256 Hash of raw audio bytes (must be from original bytes, not CID/URL)
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
     const audioHash = crypto.createHash('sha256').update(buffer).digest('hex');
@@ -47,7 +47,8 @@ export async function POST(request: NextRequest) {
     // 2. Prepare Form Data for Pinata API
     const pinataFormData = new FormData();
     const fileBlob = new Blob([buffer], { type: file.type || 'audio/webm' });
-    pinataFormData.append('file', fileBlob, file.name || `consultation-${Date.now()}.webm`);
+    const fileName = file.name || `consultation-${Date.now()}.webm`;
+    pinataFormData.append('file', fileBlob, fileName);
 
     // 3. Configure Headers
     const headers: Record<string, string> = {};
@@ -89,6 +90,10 @@ export async function POST(request: NextRequest) {
     const pinataJson = await pinataRes.json();
     const ipfsCid = pinataJson?.IpfsHash || pinataJson?.ipfsHash || pinataJson?.hash;
 
+    if (!ipfsCid) {
+      return NextResponse.json({ error: 'Pinata did not return a CID.' }, { status: 502 });
+    }
+
     // 5. Ensure parent MedicalRecord exists
     let targetRecordId = recordId;
     if (!targetRecordId) {
@@ -101,7 +106,13 @@ export async function POST(request: NextRequest) {
       targetRecordId = newRecord.id;
     }
 
-    // 6. DYNAMIC VERSION CALCULATOR: Find highest versionNumber for this recordId
+    // 6. Resolve doctor profile ID
+    const doctorProfileId = session.doctorProfileId;
+    if (!doctorProfileId) {
+      return NextResponse.json({ error: 'Doctor profile not found in session.' }, { status: 400 });
+    }
+
+    // 7. DYNAMIC VERSION CALCULATOR: Find highest versionNumber for this recordId
     const latestVersionRecord = await prisma.medicalRecordVersion.findFirst({
       where: { recordId: targetRecordId },
       orderBy: { versionNumber: 'desc' },
@@ -110,7 +121,7 @@ export async function POST(request: NextRequest) {
 
     const nextVersionNumber = latestVersionRecord ? latestVersionRecord.versionNumber + 1 : 1;
 
-    // 7. Create MedicalRecordVersion entry with incremented versionNumber
+    // 8. Create MedicalRecordVersion entry with incremented versionNumber
     const version = await prisma.medicalRecordVersion.create({
       data: {
         versionNumber: nextVersionNumber,
@@ -128,7 +139,22 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // 8. Audit Log
+    // 9. Create VoiceConsultation record so the recording appears in the repository
+    //    SHA-256 fileHash is from original audio bytes (computed in step 1)
+    const voiceConsultation = await prisma.voiceConsultation.create({
+      data: {
+        recordId: targetRecordId,
+        patientId,
+        doctorId: doctorProfileId,
+        ipfsCid,
+        fileName,
+        mimeType: file.type || 'audio/webm',
+        fileSize: buffer.length,
+        fileHash: audioHash,
+      },
+    });
+
+    // 10. Audit Log
     await prisma.auditLog.create({
       data: {
         userId: session.id,
@@ -144,6 +170,7 @@ export async function POST(request: NextRequest) {
       recordId: targetRecordId,
       versionId: version.id,
       versionNumber: nextVersionNumber,
+      voiceConsultationId: voiceConsultation.id,
       audioHash,
       ipfsCid,
       gatewayUrl: `https://gateway.pinata.cloud/ipfs/${ipfsCid}`,

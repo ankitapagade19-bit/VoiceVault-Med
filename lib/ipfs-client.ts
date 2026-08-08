@@ -1,14 +1,12 @@
 /**
  * Client-safe IPFS URL resolver.
- * Free of Node.js 'fs' dependencies, safe for browser components.
+ * Routes ALL CIDs through our authenticated /api/voice/stream proxy endpoint.
+ * This avoids CORS errors, 403s from dedicated gateways, and invalid URLs
+ * from seeded/mock CIDs that have no real IPFS backing.
  */
 export function getIpfsAudioUrl(cid: string): string {
   if (!cid) return '';
-  if (cid.startsWith('QmVoiceVault')) {
-    // Local fallback streaming route
-    return `/api/voice/stream/${cid}`;
-  }
-
-  const gateway = process.env.NEXT_PUBLIC_PINATA_GATEWAY_URL || 'https://gateway.pinata.cloud/ipfs';
-  return `${gateway}/${cid}`;
+  // Always route through the server-side authenticated streaming proxy.
+  // Never expose raw Pinata gateway URLs to the browser to avoid auth issues.
+  return `/api/voice/stream/${encodeURIComponent(cid)}`;
 }

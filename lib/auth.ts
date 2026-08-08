@@ -51,6 +51,35 @@ export function validatePasswordStrength(password: string): { valid: boolean; is
   };
 }
 
+/**
+ * Generates a random temporary password that satisfies the project password policy:
+ * at least one uppercase letter, one lowercase letter, one digit, and ≥ 12 characters.
+ * Does NOT hash the result — callers must pass it through hashPassword() before storage.
+ */
+export function generateTemporaryPassword(): string {
+  const upper = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  const lower = 'abcdefghijklmnopqrstuvwxyz';
+  const digits = '0123456789';
+  const all = upper + lower + digits;
+
+  const rand = (chars: string) => chars[Math.floor(Math.random() * chars.length)];
+
+  // Guarantee at least one of each required character class
+  const required = [rand(upper), rand(lower), rand(digits)];
+
+  // Fill remaining slots from the combined pool to reach 16 characters total
+  const rest = Array.from({ length: 13 }, () => rand(all));
+
+  // Shuffle so required chars are not always in a predictable position
+  const combined = [...required, ...rest];
+  for (let i = combined.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [combined[i], combined[j]] = [combined[j], combined[i]];
+  }
+
+  return combined.join('');
+}
+
 // --- Session & JWT Utilities ---
 
 export async function createSessionToken(payload: any): Promise<string> {
